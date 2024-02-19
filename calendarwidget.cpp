@@ -45,6 +45,7 @@ QJsonObject CalendarWidget::getJsonObject()
         }
     }
     jObj["eventArray"] = eventArray;
+    jObj["eventCount"] = eventArray.size();
 
     return jObj;
 }

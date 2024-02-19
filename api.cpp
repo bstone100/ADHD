@@ -4,6 +4,7 @@
 #include "QDate"
 #include "QJsonObject"
 #include "QtCore/qjsonarray.h"
+#include "QtCore/qjsondocument.h"
 #include "calendarwidget.h"
 #include "event.h"
 #include "mainwindow.h"
@@ -101,23 +102,19 @@ void API::processToolCalls(const QJsonArray &toolCalls, OpenAIRequest *chatReque
 {
     if (toolCalls.isEmpty()) return;
 
-    QJsonArray responseArray;
     for (int i = 0; i < toolCalls.size(); i++) {
         QJsonObject toolCall = toolCalls.at(i).toObject();
+        QJsonObject function = toolCall["function"].toObject();
 
         // call the function
-        QString functionName = toolCall["name"].toString();
+        QString functionName = function["name"].toString();
         APITool functionToCall = API::getToolByName(functionName);
 
-        QJsonObject functionArgs = toolCall["arguments"].toObject();
+        QString argumentsStr = function["arguments"].toString();
+        QJsonDocument doc = QJsonDocument::fromJson(argumentsStr.toUtf8());
+        QJsonObject functionArgs = doc.object();
 
-        QStringList debugStringList{functionName, "("};
-        for (auto it = functionArgs.begin(); it != functionArgs.end(); ++it) {
-            debugStringList << it.value().toVariant().typeName() << " " << it.value().toString();
-            if (it != functionArgs.end()) debugStringList << ",";
-        }
-        debugStringList << ")";
-        qDebug() << debugStringList.join("");
+        printToolCall(functionName, functionArgs);
 
         QString functionResponse;
         if (functionToCall.isValid()) {
@@ -126,19 +123,24 @@ void API::processToolCalls(const QJsonArray &toolCalls, OpenAIRequest *chatReque
             functionResponse = functionName + " is not a valid function.";
         }
 
-        QJsonObject response;
-        response["name"] = functionName;
-        response["response"] = functionResponse;
-        responseArray.append(response);
+        // append the function response to conversation
+        OpenAIMessage *toolMessage = new OpenAIMessage(functionResponse, OpenAIMessage::Role::Tool);
+        toolMessage->setTool_call_id(toolCall["id"].toString());
+        chatRequest->addMessage(toolMessage);
     }
 
-    // append the function response to conversation
-    OpenAIMessage *toolMessage = new OpenAIMessage("", OpenAIMessage::Role::User);
-    toolMessage->setToolResponses(responseArray);
-    chatRequest->addMessage(toolMessage);
-
-    // request that the responses be summarized
+    // request that the responses be summarized or that more function calls be made
     chatRequest->execute();
+}
+
+void API::printToolCall(const QString &name, const QJsonObject &args)
+{
+        QStringList debugStringList{name, "("};
+        for (auto it = args.begin(); it != args.end(); ++it) {
+        debugStringList << it.value().toVariant().typeName() << " " << it.value().toString() << ", ";
+        }
+        debugStringList << ")";
+        qDebug() << debugStringList.join("");
 }
 
 QString API::addEvent(const QJsonObject &jsonObject)

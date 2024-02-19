@@ -6,6 +6,7 @@
 #include "QMenuBar"
 #include "QDir"
 #include "QComboBox"
+#include "QtCore/qjsondocument.h"
 #include "audio/audiorecorder.h"
 #include "QTimer"
 #include "calendarwidget.h"
@@ -71,7 +72,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     // chat request
     chatRequest = new OpenAIRequest();
-    chatRequest->setModel("gpt-3.5-turbo-16k");
+    chatRequest->setModel("gpt-3.5-turbo-1106");
     chatRequest->setAccessToken(apiKey);
 
     QDateTime currentDateTime = QDateTime::currentDateTime();
@@ -81,7 +82,16 @@ MainWindow::MainWindow(QWidget *parent)
 
     systemPrompt["prompt"] = "You are part of an app called ADHD Task Manager. The app is an improved task management app "
                              "specifically made for people with ADHD. You are a chatbot built into the app that can "
-                             "modify the user's calendar. You can also tell the user about their schedule.";
+                             "modify the user's calendar and tell the user about their schedule."
+                             "Only use tools that you have been given access to."
+                             "Use natural language to describe dates and time.";
+
+    QFile file(":/exampleConversation.json");
+    if (file.open(QFile::ReadOnly | QFile::Text)) {
+        QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+        QJsonArray convo = doc.array();
+        systemPrompt["example conversation"] = convo;
+    }
 
     systemPrompt["current date and time"] = dateTimeStr;
 

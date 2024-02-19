@@ -36,6 +36,7 @@ public:
     static QJsonArray getToolsJsonArray();
     static APITool getToolByName(const QString &name);
     static void processToolCalls(const QJsonArray &toolCalls, OpenAIRequest *chatRequest);
+    static void printToolCall(const QString &name, const QJsonObject &args);
 
     // the tools
     static QString addEvent(const QJsonObject &jsonObject);

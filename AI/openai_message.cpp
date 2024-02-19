@@ -33,7 +33,7 @@ QString OpenAIMessage::content() const
 {
     if (!m_contentObject.isEmpty()) {
         QJsonDocument doc(m_contentObject);
-        return QString::fromUtf8(doc.toJson());
+        return QString::fromUtf8(doc.toJson(QJsonDocument::Compact));
     }
     return m_content;
 }
@@ -79,19 +79,10 @@ QString OpenAIMessage::getUserMessage()
     return m_contentObject.value("user_message").toString();
 }
 
-void OpenAIMessage::setToolResponses(const QJsonValue &value)
-{
-    m_contentObject["tool_responses"] = value;
-}
-
-QJsonValue OpenAIMessage::getToolResponses()
-{
-    return m_contentObject.value("tool_responses");
-}
-
 void OpenAIMessage::addScenegraph()
 {
     m_contentObject["scenegraph"] = MainWindow::self()->getCalendarWidget()->getJsonObject();
+    m_scenegraph = m_contentObject["scenegraph"].toObject();
 }
 
 void OpenAIMessage::removeScenegraph()
@@ -102,25 +93,16 @@ void OpenAIMessage::removeScenegraph()
     }
 }
 
-void OpenAIMessage::addPrimaryInstructions()
+void OpenAIMessage::addInstructions()
 {
-    m_contentObject["instructions"] = "You will respond to this message in perfect JSON format."
-                                      "It will be parsed with QJsonDocument::fromJson."
+    m_contentObject["instructions"] = "If the user asks about their schedule, tell them about it using information"
+                                      "from the scenegraph. Don't make any tool calls."
+                                      "Use natural language to describe dates and time.";
 
-                                      "You will respond with a JSON object containing two keys."
-                                      "The first key is assistant_message, and the second is tool_calls."
-
-                                      "If you think you can make tool calls to complete the user's request,"
-                                      "then you will fill the tool_calls array and leave assistant_message empty."
-                                      "Each array element will have keys name and arguments."
-                                      "Only use tools that have been provided to you."
-                                      "If the user wants information about their schedule, you can find it in the scenegraph."
-
-                                      "If you can't complete the user's request with tool calls,"
-                                      "then you will fill assistant_message with your response and leave tool_calls empty.";
+    m_instructions = m_contentObject["instructions"].toString();
 }
 
-void OpenAIMessage::removePrimaryInstructions()
+void OpenAIMessage::removeInstructions()
 {
     // keep the key just remove the value
     if (m_contentObject.contains("instructions")) {
@@ -128,21 +110,34 @@ void OpenAIMessage::removePrimaryInstructions()
     }
 }
 
-void OpenAIMessage::addSecondaryInstructions()
+QString OpenAIMessage::tool_call_id() const
 {
-    m_contentObject["instructions"] = "You will respond to this message in perfect JSON format."
-                                      "It will be parsed with QJsonDocument::fromJson."
-
-                                      "You will respond with a JSON object containing only key assistant_message."
-                                      "Your assistant_message will summarize the results of your previous tool calls.";
+    return m_tool_call_id;
 }
 
-void OpenAIMessage::removeSecondaryInstructions()
+void OpenAIMessage::setTool_call_id(const QString &newTool_call_id)
 {
-    // keep the key just remove the value
-    if (m_contentObject.contains("instructions")) {
-        m_contentObject["instructions"] = "removed";
-    }
+    m_tool_call_id = newTool_call_id;
+}
+
+QJsonArray OpenAIMessage::tool_calls() const
+{
+    return m_tool_calls;
+}
+
+void OpenAIMessage::setTool_calls(const QJsonArray &newTool_calls)
+{
+    m_tool_calls = newTool_calls;
+}
+
+QString OpenAIMessage::instructions() const
+{
+    return m_instructions;
+}
+
+QJsonObject OpenAIMessage::scenegraph() const
+{
+    return m_scenegraph;
 }
 
 

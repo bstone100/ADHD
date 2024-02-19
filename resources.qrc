@@ -2,5 +2,6 @@
     <qresource prefix="/">
         <file>style/lightStyle.qss</file>
         <file>style/darkStyle.qss</file>
+        <file>exampleConversation.json</file>
     </qresource>
 </RCC>

@@ -136,16 +136,15 @@ void OpenAIRequest::sendChatCompletionsRequest()
 
     // only the newest message should have a scenegraph
     removeAllScenegraphs();
-    removeAllInstructions();
     auto newestMessage = m_messages.last();
-    if (newestMessage && newestMessage->role() == OpenAIMessage::Role::User) {
-        newestMessage->addScenegraph();
-        if (newestMessage->getUserMessage() != "") {
-            newestMessage->addPrimaryInstructions();
+    if (newestMessage) {
+        switch (newestMessage->role()) {
+        case OpenAIMessage::Role::User:
+            newestMessage->addScenegraph();
             requestBody.insert("tools", API::getToolsJsonArray());
-            requestBody.insert("tool_choice", "none");
-        } else if (!newestMessage->getToolResponses().isUndefined()) {
-            newestMessage->addSecondaryInstructions();
+            break;
+        default:
+            break;
         }
     }
 
@@ -154,12 +153,20 @@ void OpenAIRequest::sendChatCompletionsRequest()
         QJsonObject messageObject;
         messageObject.insert("role", OpenAIMessage::roleToString(message->role()));
         messageObject.insert("content", message->content());
+
+        if (!message->tool_calls().isEmpty()) {
+            messageObject.insert("tool_calls", message->tool_calls());
+        }
+        if (message->tool_call_id() != "") {
+            messageObject.insert("tool_call_id", message->tool_call_id());
+        }
+
         messageArray.append(messageObject);
     }
     requestBody.insert("messages", messageArray);
 
     QJsonDocument requestBodyJson(requestBody);
-    QByteArray requestBodyBytes = requestBodyJson.toJson();
+    QByteArray requestBodyBytes = requestBodyJson.toJson(QJsonDocument::Compact);
 
     // Send the request
     QNetworkReply *reply = m_networkAccessManager->post(request, requestBodyBytes);
@@ -177,21 +184,17 @@ void OpenAIRequest::sendChatCompletionsRequest()
             // Handle the response
             const auto message = responseJson.object().value("choices").toArray().at(0).toObject().value("message").toObject();
             QString content = message.value("content").toString();
-
-            QJsonDocument contentJson = QJsonDocument::fromJson(content.toUtf8());
-            QJsonObject contentObject = contentJson.object();
-
-            QString assistant_message = contentObject.value("assistant_message").toString();
-            QJsonArray tool_calls = contentObject.value("tool_calls").toArray();
+            QJsonArray tool_calls = message.value("tool_calls").toArray();
 
             qDebug() << message;
 
             OpenAIMessage *assistantMessage = new OpenAIMessage(content, OpenAIMessage::Role::Assistant);
+            assistantMessage->setTool_calls(tool_calls);
             addMessage(assistantMessage);
 
             API::processToolCalls(tool_calls, this);
 
-            emit requestFinished(assistant_message);
+            emit requestFinished(content);
         } else {
             emit requestError(reply->errorString() + reply->readAll());
         }
@@ -528,8 +531,7 @@ void OpenAIRequest::removeAllScenegraphs()
 void OpenAIRequest::removeAllInstructions()
 {
     foreach (auto message, m_messages) {
-        message->removePrimaryInstructions();
-        message->removeSecondaryInstructions();
+        message->removeInstructions();
     }
 }
 
@@ -545,11 +547,18 @@ void OpenAIRequest::saveMessagesToFile() const
     foreach (OpenAIMessage *message, m_messages) {
         QJsonObject messageObject;
         messageObject.insert("role", OpenAIMessage::roleToString(message->role()));
-        if (message->content() != "") {
-            messageObject.insert("content", message->content());
-        } else {
-            messageObject.insert("content", message->contentObject());
+        messageObject.insert("content", message->content());
+
+        if (!message->tool_calls().isEmpty()) {
+            messageObject.insert("tool_calls", message->tool_calls());
         }
+        if (message->tool_call_id() != "") {
+            messageObject.insert("tool_call_id", message->tool_call_id());
+        }
+//        if (message->instructions() != "") {
+//            messageObject.insert("instructions", message->instructions());
+//        }
+
         messageArray.append(messageObject);
     }
 

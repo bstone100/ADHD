@@ -1,0 +1,37 @@
+[
+    {
+        "content": "{\n    \"scenegraph\": \"removed\",\n    \"user_message\": \"hello\"\n}\n",
+        "role": "user"
+    },
+    {
+        "content": "Hi! How can I assist you today?",
+        "role": "assistant"
+    },
+    {
+        "content": "{\n    \"scenegraph\": \"removed\",\n    \"user_message\": \"I'd like you to add a task for Tuesday the 20th to go to class at 10 a.m.\"\n}\n",
+        "role": "user"
+    },
+    {
+        "content": "",
+        "role": "assistant",
+        "tool_calls": [
+            {
+                "function": {
+                    "arguments": "{\"category\":\"Task\",\"date\":\"2024-02-20\",\"description\":\"Go to class\",\"time\":\"10:00\"}",
+                    "name": "addEvent"
+                },
+                "id": "call_CIgotHFwvSU9xW5TKG0wXlPe",
+                "type": "function"
+            }
+        ]
+    },
+    {
+        "content": "Added event.",
+        "role": "tool",
+        "tool_call_id": "call_CIgotHFwvSU9xW5TKG0wXlPe"
+    },
+    {
+        "content": "The task \"Go to class\" on Tuesday, February 20th at 10:00 a.m. has been successfully added to your schedule.",
+        "role": "assistant"
+    }
+]

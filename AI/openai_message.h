@@ -65,17 +65,21 @@ public:
     void setUserMessage(const QString &text);
     QString getUserMessage();
 
-    void setToolResponses(const QJsonValue &value);
-    QJsonValue getToolResponses();
-
     void addScenegraph();
     void removeScenegraph();
 
-    void addPrimaryInstructions();
-    void removePrimaryInstructions();
+    void addInstructions();
+    void removeInstructions();
 
-    void addSecondaryInstructions();
-    void removeSecondaryInstructions();
+    QString tool_call_id() const;
+    void setTool_call_id(const QString &newTool_call_id);
+
+    QJsonArray tool_calls() const;
+    void setTool_calls(const QJsonArray &newTool_calls);
+
+    QString instructions() const;
+
+    QJsonObject scenegraph() const;
 
 signals:
     void contentChanged();
@@ -85,5 +89,16 @@ private:
     QString m_content;
     QJsonObject m_contentObject;
 
+    QString m_tool_call_id;
+    QJsonArray m_tool_calls;
+
     Role m_role;
+
+    // cache this
+    QString m_instructions;
+    QJsonObject m_scenegraph;
 };
+
+
+
+
