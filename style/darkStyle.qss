@@ -1,0 +1,67 @@
+/* QWidget (Dark Mode) */
+QWidget {
+    background-color: #3D315B; /* Dark background color */
+    color: #F2E9FF; /* Light text color */
+}
+
+/* QPushButton (Dark Mode) */
+QPushButton {
+    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #7A71E7, stop:1 #5A4EA6); /* Gradient for regular state */
+    border: 2px solid #5A4EA6; /* Border color for regular state */
+    border-radius: 5px;
+    padding: 8px 16px;
+    color: #F2E9FF; /* Text color for regular state */
+}
+
+QPushButton:hover {
+    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #5A4EA6, stop:1 #7A71E7); /* Gradient for hover state */
+}
+
+QPushButton:pressed {
+    background-color: #3D315B; /* Background color for pressed state */
+    border: 2px solid #7A71E7; /* Border color for pressed state */
+    color: #F2E9FF; /* Text color for pressed state */
+}
+
+QPushButton:disabled {
+    background-color: #5A4EA6; /* Background color for disabled state */
+    color: #A095C7; /* Text color for disabled state */
+}
+
+QComboBox {
+    border: 2px solid #7A71E7; /* Border color */
+    border-radius: 5px;
+    padding: 4px 8px;
+    color: #F2E9FF; /* Text color */
+    background-color: transparent;
+}
+
+QLineEdit {
+    background-color: transparent; /* Background color */
+    border: 2px solid #7A71E7; /* Border color */
+    border-radius: 5px;
+    padding: 4px 8px;
+    color: #F2E9FF; /* Text color */
+}
+
+QMenu {
+    background-color: #3D315B; /* Dark background color */
+    border: 1px solid #7A71E7; /* Border color */
+    color: #F2E9FF; /* Light text color */
+    border-radius: 5px; /* Rounded corners */
+}
+
+QMenu::item {
+    padding: 4px 20px; /* Padding for menu items */
+    background-color: transparent; /* Transparent background for items */
+}
+
+QMenu::item:selected {
+    background-color: #5A4EA6; /* Background color for selected item */
+}
+
+QMenu::item:disabled {
+    color: #A095C7; /* Color for disabled items */
+    background-color: transparent; /* Transparent background for disabled items */
+}
+
