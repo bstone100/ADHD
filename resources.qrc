@@ -3,5 +3,6 @@
         <file>style/lightStyle.qss</file>
         <file>style/darkStyle.qss</file>
         <file>exampleConversation.json</file>
+        <file>images/ADHD.icns</file>
     </qresource>
 </RCC>
