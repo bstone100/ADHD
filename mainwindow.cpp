@@ -26,7 +26,17 @@ MainWindow::MainWindow(QWidget *parent)
     qApp->setOrganizationName("BenProductions");
     qApp->setApplicationName("ADHD");
     
-    currentPath = QStandardPaths::standardLocations( QStandardPaths::AppDataLocation ).value(0);
+
+// Preprocessor directives to check the platform
+#if defined(Q_OS_IOS)
+    currentPath = QStandardPaths::standardLocations(QStandardPaths::AppDataLocation).value(0);
+#elif defined(Q_OS_MACOS) || defined(Q_OS_WIN)
+    currentPath = QCoreApplication::applicationDirPath();
+#else
+    // Default to AppDataLocation for other platforms
+    currentPath = QStandardPaths::standardLocations(QStandardPaths::AppDataLocation).value(0);
+#endif
+
     QDir dir(currentPath);
     if (!dir.exists()) {
         dir.mkpath(currentPath);
@@ -41,7 +51,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     apiKeyButton = new QPushButton(/*this*/);
     updateApiKeyButtonLabel();
-    darkModeButton = new QPushButton(this);
+    darkModeButton = new QPushButton(/*this*/);
 
     connect(apiKeyButton, &QPushButton::clicked, this, &MainWindow::onApiKeyButtonClicked);
     connect(darkModeButton, &QPushButton::clicked, this, &MainWindow::onDarkModeButtonClicked);
@@ -126,7 +136,6 @@ MainWindow::MainWindow(QWidget *parent)
 
     // Top layout for dark mode button, voice selection, and record button
     QHBoxLayout *topRowLayout = new QHBoxLayout();
-    topRowLayout->addWidget(darkModeButton);
     topRowLayout->addWidget(voiceSelectionComboBox);
     topRowLayout->addWidget(recordAudioButton);
 
@@ -269,6 +278,7 @@ void MainWindow::loadSettings()
     isDarkMode = settings->value("isDarkMode").toBool();
     voice = settings->value("voice").toString();
 
+    isDarkMode = false; // just use light mode until we do auto theme change
     setDarkMode(isDarkMode);
     voiceSelectionComboBox->setCurrentText(voice);
 
