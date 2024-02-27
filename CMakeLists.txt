@@ -9,10 +9,21 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(MACOSX_BUNDLE_ICON_FILE ADHD.icns)
-set(app_icon_macos "${CMAKE_CURRENT_SOURCE_DIR}/images/ADHD.icns")
-set_source_files_properties(${app_icon_macos} PROPERTIES
-           MACOSX_PACKAGE_LOCATION "Resources")
+set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64")
+
+# Determine the platform and set the appropriate icon file
+if(APPLE)
+    if(IOS)
+        set(app_icon "${CMAKE_CURRENT_SOURCE_DIR}/images/full_size_iOS.icns")
+        set(MACOSX_BUNDLE_ICON_FILE full_size_iOS.icns)
+    else() # Assuming macOS if not iOS
+        set(app_icon "${CMAKE_CURRENT_SOURCE_DIR}/images/full_size_macOS.icns")
+        set(MACOSX_BUNDLE_ICON_FILE full_size_macOS.icns)
+    endif()
+
+    set_source_files_properties(${app_icon} PROPERTIES
+               MACOSX_PACKAGE_LOCATION "Resources")
+endif()
 
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Network Multimedia)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Network Multimedia)
@@ -31,7 +42,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         api.h api.cpp
         eventmanager.h eventmanager.cpp
         event.cpp
-        ${app_icon_macos}
+        ${app_icon}
     )
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET ADHD APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
@@ -68,6 +79,7 @@ set_target_properties(ADHD PROPERTIES
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
     MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/Info.plist.in
+    QT_IOS_LAUNCH_SCREEN "${CMAKE_CURRENT_SOURCE_DIR}/LaunchScreen.storyboard"
     MACOSX_BUNDLE TRUE
     WIN32_EXECUTABLE TRUE
 )

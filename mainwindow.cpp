@@ -11,8 +11,10 @@
 #include "QTimer"
 #include "calendarwidget.h"
 #include "QJsonObject"
+#include "qstandardpaths.h"
 
 MainWindow *MainWindow::singleton = NULL;
+QString MainWindow::currentPath;
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -23,6 +25,12 @@ MainWindow::MainWindow(QWidget *parent)
 
     qApp->setOrganizationName("BenProductions");
     qApp->setApplicationName("ADHD");
+    
+    currentPath = QStandardPaths::standardLocations( QStandardPaths::AppDataLocation ).value(0);
+    QDir dir(currentPath);
+    if (!dir.exists()) {
+        dir.mkpath(currentPath);
+    }
 
     settings = new QSettings;
 
@@ -101,7 +109,7 @@ MainWindow::MainWindow(QWidget *parent)
     speechRequest = new OpenAIRequest();
     speechRequest->setModel("tts-1");
     speechRequest->setAccessToken(apiKey);
-    speechRequest->setFilePath(QCoreApplication::applicationDirPath() + QDir::separator() + "speech.mp3");
+    speechRequest->setFilePath(currentPath + QDir::separator() + "speech.mp3");
     speechRequest->setResponseFormat("mp3");
 
     // say the response out loud
@@ -116,21 +124,24 @@ MainWindow::MainWindow(QWidget *parent)
     sendChatButton->setEnabled(false);
     connect(sendChatButton, &QPushButton::clicked, this, &MainWindow::sendChat);
 
-    // Adding widgets to the top layout
-    QHBoxLayout *topLayout = new QHBoxLayout();
-//    topLayout->addWidget(apiKeyButton);
-    topLayout->addWidget(darkModeButton);
-    topLayout->addWidget(voiceSelectionComboBox);
-    topLayout->addWidget(recordAudioButton);
-    topLayout->addWidget(textInputField);
-    topLayout->addWidget(sendChatButton);
+    // Top layout for dark mode button, voice selection, and record button
+    QHBoxLayout *topRowLayout = new QHBoxLayout();
+    topRowLayout->addWidget(darkModeButton);
+    topRowLayout->addWidget(voiceSelectionComboBox);
+    topRowLayout->addWidget(recordAudioButton);
+
+    // Second row layout for text input and send chat button
+    QHBoxLayout *secondRowLayout = new QHBoxLayout();
+    secondRowLayout->addWidget(textInputField);
+    secondRowLayout->addWidget(sendChatButton);
 
     // Calendar widget
     calendarWidget = new CalendarWidget(this);
     calendarWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
     // Adding layouts and widgets to the main layout
-    layout->addLayout(topLayout); // Add the top layout first
+    layout->addLayout(topRowLayout);
+    layout->addLayout(secondRowLayout);
     layout->addWidget(calendarWidget, 1); // Calendar takes most of the space
 
     loadSettings();
@@ -213,9 +224,13 @@ void MainWindow::onApiKeyButtonClicked()
 
 void MainWindow::onDarkModeButtonClicked()
 {
-    isDarkMode = !isDarkMode; // Toggle dark mode
+    handleThemeChange(!isDarkMode);
+}
+
+void MainWindow::handleThemeChange(bool isDarkMode) {
+    this->isDarkMode = isDarkMode;
     saveSettings();
-    setDarkMode(isDarkMode); // Apply the selected mode
+    setDarkMode(isDarkMode);
 }
 
 void MainWindow::setDarkMode(bool darkMode)

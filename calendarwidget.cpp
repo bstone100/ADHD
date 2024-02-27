@@ -6,6 +6,7 @@
 #include "QJsonDocument"
 #include "eventmanager.h"
 #include "qmenu.h"
+#include "mainwindow.h"
 
 CalendarWidget::CalendarWidget(QWidget *parent) : QCalendarWidget(parent) {
     auto children = findChildren<QTableView *>();
@@ -21,6 +22,7 @@ CalendarWidget::CalendarWidget(QWidget *parent) : QCalendarWidget(parent) {
 void CalendarWidget::addEvent(const Event &event) {
     events[event.date].append(event);
     updateCell(event.date);
+    MainWindow::self()->saveSettings();
 }
 
 void CalendarWidget::removeEvent(const Event &event)
@@ -31,6 +33,7 @@ void CalendarWidget::removeEvent(const Event &event)
         eventList.removeAt(index);
         events[event.date] = eventList;
         updateCell(event.date);
+        MainWindow::self()->saveSettings();
     }
 }
 

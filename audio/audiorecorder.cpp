@@ -19,12 +19,12 @@
 #include <QAudioOutput>
 #include <QMessageBox>
 #include <QApplication>
+#include "../mainwindow.h"
 
 #if QT_CONFIG(permissions)
   #include <QPermission>
 #endif
 
-int AudioRecorder::recordingCount = 0;
 
 AudioRecorder::AudioRecorder()
 {
@@ -65,8 +65,14 @@ void AudioRecorder::toggleRecord()
 
         m_captureSession.audioInput()->setDevice(QMediaDevices::defaultAudioInput());
 
-        QString dir = QCoreApplication::applicationDirPath();
-        QString tempFilePath = dir + QDir::separator() + "whisper" + QString::number(++recordingCount) + ".wav";
+        QString tempFilePath = MainWindow::currentPath + QDir::separator() + "latestRecording.wav";
+
+        // Check if the file exists and delete it if so
+        QFile file(tempFilePath);
+        if (file.exists()) {
+            file.remove();
+        }
+
         m_audioRecorder->setOutputLocation(QUrl::fromLocalFile(tempFilePath));
 
         QMediaFormat format;

@@ -27,16 +27,21 @@ public:
     void sendChat();
     void transcribe();
 
+    void saveSettings();
+    void loadSettings();
+
     CalendarWidget *getCalendarWidget(){return calendarWidget;}
+
+    static QString currentPath;
+
+    void onApiKeyButtonClicked();
+    void onDarkModeButtonClicked();
+    void handleThemeChange(bool isDarkMode);
 
 protected:
     void closeEvent(QCloseEvent *event) override;
     void keyPressEvent(QKeyEvent *event) override;
     bool eventFilter(QObject *obj, QEvent *event) override;
-
-private slots:
-    void onApiKeyButtonClicked();
-    void onDarkModeButtonClicked();
 
 private:
     static MainWindow *singleton;
@@ -44,9 +49,6 @@ private:
     void updateApiKeyButtonLabel();
 
     void setDarkMode(bool darkMode);
-
-    void saveSettings();
-    void loadSettings();
 
     QSettings *settings;
 

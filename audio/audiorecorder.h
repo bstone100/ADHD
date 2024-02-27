@@ -37,8 +37,6 @@ signals:
 private:
     QMediaCaptureSession m_captureSession;
     QMediaRecorder *m_audioRecorder = nullptr;
-
-    static int recordingCount;
 };
 
 #endif // AUDIORECORDER_H

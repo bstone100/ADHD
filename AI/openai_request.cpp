@@ -14,6 +14,8 @@
 #include "QtMultimedia/qmediaplayer.h"
 #include "openai_request.h"
 #include "../api.h"
+#include "qdir.h"
+#include "../mainwindow.h"
 
 OpenAIRequest::OpenAIRequest(QObject *parent)
     : QObject(parent)
@@ -537,7 +539,7 @@ void OpenAIRequest::removeAllInstructions()
 
 void OpenAIRequest::saveMessagesToFile() const
 {
-    QFile file("messages.json");
+    QFile file(MainWindow::currentPath + QDir::separator() + "messages.json");
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
         qDebug() << "Failed to open file for writing:" << file.errorString();
         return;
