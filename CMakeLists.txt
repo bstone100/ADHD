@@ -9,7 +9,8 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64")
+# to get universal app (works on m1 and intel chip)
+#set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64")
 
 # Determine the platform and set the appropriate icon file
 if(APPLE)
