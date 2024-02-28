@@ -26,8 +26,8 @@ if(APPLE)
                MACOSX_PACKAGE_LOCATION "Resources")
 endif()
 
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Network Multimedia)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Network Multimedia)
+find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Network Multimedia Svg)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Network Multimedia Svg)
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_add_executable(ADHD
@@ -44,6 +44,8 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         eventmanager.h eventmanager.cpp
         event.cpp
         ${app_icon}
+        sidepanel.h sidepanel.cpp
+        svgbutton.h svgbutton.cpp
     )
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET ADHD APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
@@ -67,6 +69,7 @@ target_link_libraries(ADHD PRIVATE
     Qt${QT_VERSION_MAJOR}::Widgets
     Qt${QT_VERSION_MAJOR}::Network
     Qt${QT_VERSION_MAJOR}::Multimedia
+    Qt${QT_VERSION_MAJOR}::Svg
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.

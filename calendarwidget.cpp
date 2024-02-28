@@ -7,6 +7,9 @@
 #include "eventmanager.h"
 #include "qmenu.h"
 #include "mainwindow.h"
+#include "QHeaderView"
+#include "QToolButton"
+#include "svgbutton.h"
 
 CalendarWidget::CalendarWidget(QWidget *parent) : QCalendarWidget(parent) {
     auto children = findChildren<QTableView *>();
@@ -14,6 +17,47 @@ CalendarWidget::CalendarWidget(QWidget *parent) : QCalendarWidget(parent) {
         tableView = children[0];
     }
     Q_ASSERT(tableView);
+
+//    auto buttons = findChildren<QAbstractButton *>();
+//    qDebug() << buttons;
+
+//    qt_calendar_prevmonth qt_calendar_nextmonth qt_calendar_monthbutton qt_calendar_yearbutton
+
+    QToolButton *monthDropDown = findChild<QToolButton *>("qt_calendar_monthbutton");
+    monthDropDown->setStyleSheet("QToolButton::menu-indicator { image: none; }");
+    monthDropDown->setCursor(Qt::PointingHandCursor);
+
+    QToolButton *yearEditBox = findChild<QToolButton *>("qt_calendar_yearbutton");
+    yearEditBox->setStyleSheet("QToolButton::menu-indicator { image: none; }");
+    yearEditBox->setCursor(Qt::PointingHandCursor);
+
+    QAbstractButton *prevMonth = findChild<QAbstractButton *>("qt_calendar_prevmonth");
+    auto layout = prevMonth->parentWidget()->layout();
+
+    SvgButton *prevButton = new SvgButton();
+    prevButton->setSvgPath(":/images/leftArrow.svg");
+    prevButton->setIconSize(QSize(30,30));
+    prevButton->setUsingAppColors(true);
+
+    connect(prevButton, &QPushButton::clicked, this, &QCalendarWidget::showPreviousMonth);
+
+    QAbstractButton *nextMonth = findChild<QAbstractButton *>("qt_calendar_nextmonth");
+
+    SvgButton *nextButton = new SvgButton();
+    nextButton->setSvgPath(":/images/rightArrow.svg");
+    nextButton->setIconSize(QSize(30,30));
+    nextButton->setUsingAppColors(true);
+
+    connect(nextButton, &QPushButton::clicked, this, &QCalendarWidget::showNextMonth);
+
+    layout->replaceWidget(prevMonth, prevButton);
+    layout->replaceWidget(nextMonth, nextButton);
+
+    layout->removeWidget(prevMonth);
+    prevMonth->setParent(NULL);
+    layout->removeWidget(nextMonth);
+    nextMonth->setParent(NULL);
+
 
     setContextMenuPolicy(Qt::CustomContextMenu);
     connect(this, &CalendarWidget::customContextMenuRequested, this, &CalendarWidget::handleContextMenuRequested);

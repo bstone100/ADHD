@@ -12,6 +12,7 @@
 class OpenAIRequest;
 class AudioRecorder;
 class CalendarWidget;
+class SvgButton;
 
 class MainWindow : public QMainWindow
 {
@@ -42,6 +43,7 @@ protected:
     void closeEvent(QCloseEvent *event) override;
     void keyPressEvent(QKeyEvent *event) override;
     bool eventFilter(QObject *obj, QEvent *event) override;
+    void resizeEvent(QResizeEvent *event) override;
 
 private:
     static MainWindow *singleton;
@@ -63,10 +65,10 @@ private:
 
     QComboBox *voiceSelectionComboBox;
 
-    QPushButton *sendChatButton;
+    SvgButton *sendChatButton;
     QLineEdit *textInputField;
 
-    QPushButton *recordAudioButton;
+    SvgButton *recordAudioButton;
     AudioRecorder *audioRecorder;
 
     OpenAIRequest *chatRequest;

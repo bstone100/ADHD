@@ -12,6 +12,9 @@
 #include "calendarwidget.h"
 #include "QJsonObject"
 #include "qstandardpaths.h"
+#include "sidepanel.h"
+#include "QSvgRenderer"
+#include "svgbutton.h"
 
 MainWindow *MainWindow::singleton = NULL;
 QString MainWindow::currentPath;
@@ -25,7 +28,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     qApp->setOrganizationName("BenProductions");
     qApp->setApplicationName("ADHD");
-    
+
 
 // Preprocessor directives to check the platform
 #if defined(Q_OS_IOS)
@@ -45,30 +48,35 @@ MainWindow::MainWindow(QWidget *parent)
     settings = new QSettings;
 
     centralWidget = new QWidget(this);
+    centralWidget->setFocusPolicy(Qt::StrongFocus);
     setCentralWidget(centralWidget);
 
     layout = new QVBoxLayout(centralWidget);
 
     apiKeyButton = new QPushButton(/*this*/);
     updateApiKeyButtonLabel();
-    darkModeButton = new QPushButton(/*this*/);
+    darkModeButton = new QPushButton();
 
     connect(apiKeyButton, &QPushButton::clicked, this, &MainWindow::onApiKeyButtonClicked);
     connect(darkModeButton, &QPushButton::clicked, this, &MainWindow::onDarkModeButtonClicked);
 
 
     // Create the dropdown menu for voice selection
-    voiceSelectionComboBox = new QComboBox(this);
+    voiceSelectionComboBox = new QComboBox();
     QStringList voices = {"alloy", "echo", "fable", "onyx", "nova", "shimmer"};
     voiceSelectionComboBox->addItems(voices);
     connect(voiceSelectionComboBox, &QComboBox::currentTextChanged, this, [=]{
         voice = voiceSelectionComboBox->currentText();
     });
 
+#if defined(Q_OS_MACOS)
+    voiceSelectionComboBox->setStyleSheet("combobox-popup: 0;");
+#endif
+
 
     // Create the text input field
     textInputField = new QLineEdit(this);
-    textInputField->setPlaceholderText("Send a message to ADHD Task Manager...");
+    textInputField->setPlaceholderText("Send a message...");
     textInputField->installEventFilter(this);
 
     connect(textInputField, &QLineEdit::textChanged, this, [=](const QString &text){
@@ -76,7 +84,11 @@ MainWindow::MainWindow(QWidget *parent)
     });
 
     audioRecorder = new AudioRecorder();
-    recordAudioButton = new QPushButton("Record Audio", this);
+
+    recordAudioButton = new SvgButton(this);
+    recordAudioButton->setSvgPath(":/images/microphone.svg");
+    recordAudioButton->setIconSize(QSize(30,30));
+    recordAudioButton->setUsingAppColors(true);
 
     connect(recordAudioButton, &QPushButton::clicked, audioRecorder, &AudioRecorder::toggleRecord);
 
@@ -130,23 +142,62 @@ MainWindow::MainWindow(QWidget *parent)
     connect(whisperRequest, &OpenAIRequest::requestFinished, textInputField, &QLineEdit::setText);
 
 
-    sendChatButton = new QPushButton("Send Chat", this);
+    sendChatButton = new SvgButton(this);
+    sendChatButton->setSvgPath(":/images/send.svg");
+    sendChatButton->setIconSize(QSize(30,30));
+    sendChatButton->setUsingAppColors(true);
+
     sendChatButton->setEnabled(false);
     connect(sendChatButton, &QPushButton::clicked, this, &MainWindow::sendChat);
-
-    // Top layout for dark mode button, voice selection, and record button
-    QHBoxLayout *topRowLayout = new QHBoxLayout();
-    topRowLayout->addWidget(voiceSelectionComboBox);
-    topRowLayout->addWidget(recordAudioButton);
-
-    // Second row layout for text input and send chat button
-    QHBoxLayout *secondRowLayout = new QHBoxLayout();
-    secondRowLayout->addWidget(textInputField);
-    secondRowLayout->addWidget(sendChatButton);
 
     // Calendar widget
     calendarWidget = new CalendarWidget(this);
     calendarWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    calendarWidget->setVerticalHeaderFormat(QCalendarWidget::NoVerticalHeader);
+//    calendarWidget->setGridVisible(true);
+
+    // today button
+    SvgButton *todayButton = new SvgButton(this);
+    todayButton->setSvgPath(":/images/today.svg");
+    todayButton->setIconSize(QSize(30,30));
+    todayButton->setUsingAppColors(true);
+
+    connect(todayButton, &QPushButton::clicked, this, [=]{
+        calendarWidget->setSelectedDate(QDate::currentDate());
+    });
+
+    // side panel
+    SvgButton *drawerButton = new SvgButton(this);
+    drawerButton->setSvgPath(":/images/drawer.svg");
+    drawerButton->setIconSize(QSize(30,30));
+    drawerButton->setUsingAppColors(true);
+
+    connect(SidePanel::self(), &SidePanel::animationStarted, drawerButton, [=]{
+        drawerButton->startColorOverride(drawerButton->defaultColor());
+    });
+    connect(SidePanel::self(), &SidePanel::animationFinished, drawerButton, [=]{
+        drawerButton->stopColorOverride();
+    });
+
+    connect(drawerButton, &QPushButton::clicked, SidePanel::self(), &SidePanel::toggle);
+
+    auto vLayout = SidePanel::self()->verticalLayout();
+    vLayout->setSpacing(30);
+    vLayout->addWidget(darkModeButton);
+    vLayout->addWidget(voiceSelectionComboBox);
+    vLayout->addStretch();
+
+    // Top layout for dark mode button, voice selection, and record button
+    QHBoxLayout *topRowLayout = new QHBoxLayout();
+    topRowLayout->addWidget(drawerButton);
+    topRowLayout->addStretch();
+    topRowLayout->addWidget(todayButton);
+
+    // Second row layout for text input and send chat button
+    QHBoxLayout *secondRowLayout = new QHBoxLayout();
+    secondRowLayout->addWidget(textInputField);
+    secondRowLayout->addWidget(recordAudioButton);
+    secondRowLayout->addWidget(sendChatButton);
 
     // Adding layouts and widgets to the main layout
     layout->addLayout(topRowLayout);
@@ -249,14 +300,17 @@ void MainWindow::setDarkMode(bool darkMode)
     QFile file(path);
     if (file.open(QFile::ReadOnly | QFile::Text)) {
         QString styleSheet = file.readAll();
+        qApp->processEvents();
         qApp->setStyleSheet(styleSheet);
         qApp->processEvents();
     }
 
     if (darkMode) {
         darkModeButton->setText("Switch to Light Mode");
+        SvgButton::setAppColors(Qt::white, Qt::lightGray, Qt::white, Qt::lightGray);
     } else {
         darkModeButton->setText("Switch to Dark Mode");
+        SvgButton::setAppColors(Qt::black, Qt::lightGray, Qt::black, Qt::lightGray);
     }
 }
 
@@ -278,9 +332,8 @@ void MainWindow::loadSettings()
     isDarkMode = settings->value("isDarkMode").toBool();
     voice = settings->value("voice").toString();
 
-    isDarkMode = false; // just use light mode until we do auto theme change
-    setDarkMode(isDarkMode);
     voiceSelectionComboBox->setCurrentText(voice);
+    setDarkMode(isDarkMode);
 
     calendarWidget->loadSettings();
 
@@ -299,6 +352,7 @@ void MainWindow::updateApiKeyButtonLabel()
 
 bool MainWindow::eventFilter(QObject *obj, QEvent *event)
 {
+    // pressing enter sends chat
     if (obj == textInputField && event->type() == QEvent::KeyPress) {
         QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
         if (keyEvent->key() == Qt::Key_Return || keyEvent->key() == Qt::Key_Enter) {
@@ -306,7 +360,17 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
             return true;
         }
     }
+
     return QObject::eventFilter(obj, event);
+}
+
+void MainWindow::resizeEvent(QResizeEvent *event)
+{
+    if (SidePanel::self()->isVisible()) {
+        SidePanel::self()->updateSize();
+    }
+
+    return QMainWindow::resizeEvent(event);
 }
 
 
