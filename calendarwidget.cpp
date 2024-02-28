@@ -5,6 +5,7 @@
 #include "QSettings"
 #include "QJsonDocument"
 #include "eventmanager.h"
+#include "qapplication.h"
 #include "qmenu.h"
 #include "mainwindow.h"
 #include "QHeaderView"
@@ -18,9 +19,8 @@ CalendarWidget::CalendarWidget(QWidget *parent) : QCalendarWidget(parent) {
     }
     Q_ASSERT(tableView);
 
-//    auto buttons = findChildren<QAbstractButton *>();
-//    qDebug() << buttons;
-
+//    auto childWidgets = findChildren<QWidget *>();
+//    qDebug() << childWidgets;
 //    qt_calendar_prevmonth qt_calendar_nextmonth qt_calendar_monthbutton qt_calendar_yearbutton
 
     QToolButton *monthDropDown = findChild<QToolButton *>("qt_calendar_monthbutton");
@@ -37,6 +37,7 @@ CalendarWidget::CalendarWidget(QWidget *parent) : QCalendarWidget(parent) {
     SvgButton *prevButton = new SvgButton();
     prevButton->setSvgPath(":/images/leftArrow.svg");
     prevButton->setIconSize(QSize(30,30));
+    prevButton->setFixedSize(90, 50);
     prevButton->setUsingAppColors(true);
 
     connect(prevButton, &QPushButton::clicked, this, &QCalendarWidget::showPreviousMonth);
@@ -46,6 +47,7 @@ CalendarWidget::CalendarWidget(QWidget *parent) : QCalendarWidget(parent) {
     SvgButton *nextButton = new SvgButton();
     nextButton->setSvgPath(":/images/rightArrow.svg");
     nextButton->setIconSize(QSize(30,30));
+    nextButton->setFixedSize(90, 50);
     nextButton->setUsingAppColors(true);
 
     connect(nextButton, &QPushButton::clicked, this, &QCalendarWidget::showNextMonth);
@@ -58,6 +60,14 @@ CalendarWidget::CalendarWidget(QWidget *parent) : QCalendarWidget(parent) {
     layout->removeWidget(nextMonth);
     nextMonth->setParent(NULL);
 
+    QTextCharFormat format = weekdayTextFormat(Qt::Monday);
+    setWeekdayTextFormat(Qt::Saturday, format);
+    setWeekdayTextFormat(Qt::Sunday, format);
+
+    setDateEditEnabled(false);
+    setVerticalHeaderFormat(QCalendarWidget::NoVerticalHeader);
+//    setNavigationBarVisible(false);
+//    setGridVisible(true);
 
     setContextMenuPolicy(Qt::CustomContextMenu);
     connect(this, &CalendarWidget::customContextMenuRequested, this, &CalendarWidget::handleContextMenuRequested);

@@ -41,7 +41,8 @@ SidePanel *SidePanel::self()
 void SidePanel::toggle() {
 
     QPropertyAnimation *animation = new QPropertyAnimation(this, "geometry");
-    animation->setDuration(250); // Animation duration in milliseconds
+    animation->setDuration(200); // Animation duration in milliseconds
+    animation->setEasingCurve(QEasingCurve::InOutCubic);
 
     int width = calculateWidth();
     QRect closedGeometry(-width, 0, width, MainWindow::self()->height());

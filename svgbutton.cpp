@@ -166,8 +166,13 @@ void SvgButton::paintEvent(QPaintEvent *event) {
     painter.setBrush(Qt::red);
     painter.setPen(Qt::NoPen);
 
+    // Calculate the center position for the icon
+    QPointF iconTopLeft((width() - iconSize.width()) / 2.0,
+                        (height() - iconSize.height()) / 2.0);
+    QRectF bounds(iconTopLeft, iconSize);
+
     // Render the SVG
-    renderer.render(&painter);
+    renderer.render(&painter, bounds);
 }
 
 // update the color based on the state of the button

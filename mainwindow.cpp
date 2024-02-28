@@ -78,6 +78,7 @@ MainWindow::MainWindow(QWidget *parent)
     textInputField = new QLineEdit(this);
     textInputField->setPlaceholderText("Send a message...");
     textInputField->installEventFilter(this);
+    textInputField->setFixedHeight(40);
 
     connect(textInputField, &QLineEdit::textChanged, this, [=](const QString &text){
         sendChatButton->setEnabled(text != "");
@@ -153,13 +154,13 @@ MainWindow::MainWindow(QWidget *parent)
     // Calendar widget
     calendarWidget = new CalendarWidget(this);
     calendarWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    calendarWidget->setVerticalHeaderFormat(QCalendarWidget::NoVerticalHeader);
-//    calendarWidget->setGridVisible(true);
+
 
     // today button
     SvgButton *todayButton = new SvgButton(this);
     todayButton->setSvgPath(":/images/today.svg");
     todayButton->setIconSize(QSize(30,30));
+    todayButton->setFixedSize(70, 70);
     todayButton->setUsingAppColors(true);
 
     connect(todayButton, &QPushButton::clicked, this, [=]{
@@ -170,6 +171,7 @@ MainWindow::MainWindow(QWidget *parent)
     SvgButton *drawerButton = new SvgButton(this);
     drawerButton->setSvgPath(":/images/drawer.svg");
     drawerButton->setIconSize(QSize(30,30));
+    drawerButton->setFixedSize(70, 70);
     drawerButton->setUsingAppColors(true);
 
     connect(SidePanel::self(), &SidePanel::animationStarted, drawerButton, [=]{
@@ -192,17 +194,24 @@ MainWindow::MainWindow(QWidget *parent)
     topRowLayout->addWidget(drawerButton);
     topRowLayout->addStretch();
     topRowLayout->addWidget(todayButton);
+    topRowLayout->setContentsMargins(0,0,0,0);
 
     // Second row layout for text input and send chat button
     QHBoxLayout *secondRowLayout = new QHBoxLayout();
+    secondRowLayout->setSpacing(5);
     secondRowLayout->addWidget(textInputField);
     secondRowLayout->addWidget(recordAudioButton);
     secondRowLayout->addWidget(sendChatButton);
 
     // Adding layouts and widgets to the main layout
     layout->addLayout(topRowLayout);
-    layout->addLayout(secondRowLayout);
     layout->addWidget(calendarWidget, 1); // Calendar takes most of the space
+    layout->addLayout(secondRowLayout);
+//    layout->addSpacing(10);
+
+    auto margins = layout->contentsMargins();
+    margins.setTop(0);
+    layout->setContentsMargins(margins);
 
     loadSettings();
 }
@@ -305,13 +314,33 @@ void MainWindow::setDarkMode(bool darkMode)
         qApp->processEvents();
     }
 
+//    0xF2E9FF (light) 0x3D315B (dark)
+
+    QTextCharFormat format = calendarWidget->weekdayTextFormat(Qt::Monday); // weekends
+    QTextCharFormat format2; // header
+
     if (darkMode) {
         darkModeButton->setText("Switch to Light Mode");
         SvgButton::setAppColors(Qt::white, Qt::lightGray, Qt::white, Qt::lightGray);
+
+//        format.setForeground(QBrush(0xF2E9FF));
+        format.setBackground(QBrush(0x3D315B));
+//        format2.setForeground(QBrush(0xF2E9FF));
+        format2.setBackground(QBrush(0x3D315B));
     } else {
         darkModeButton->setText("Switch to Dark Mode");
         SvgButton::setAppColors(Qt::black, Qt::lightGray, Qt::black, Qt::lightGray);
+
+//        format.setForeground(QBrush(0x3D315B));
+        format.setBackground(QBrush(0xF2E9FF));
+//        format2.setForeground(QBrush(0x3D315B));
+        format2.setBackground(QBrush(0xF2E9FF));
     }
+
+    calendarWidget->setWeekdayTextFormat(Qt::Saturday, format);
+    calendarWidget->setWeekdayTextFormat(Qt::Sunday, format);
+    calendarWidget->setHeaderTextFormat(format2);
+
 }
 
 void MainWindow::saveSettings()
