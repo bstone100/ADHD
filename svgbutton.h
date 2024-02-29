@@ -44,6 +44,11 @@ public:
 
     void updateColor();
 
+    static QColor appDefaultColor();
+    static QColor appDisabledColor();
+    static QColor appHoverColor();
+    static QColor appPressedColor();
+
 protected:
     bool event(QEvent *event) override;
     void paintEvent(QPaintEvent *event) override;

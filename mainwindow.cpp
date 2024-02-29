@@ -15,6 +15,10 @@
 #include "sidepanel.h"
 #include "QSvgRenderer"
 #include "svgbutton.h"
+#include "iOS/hapticfeedback.h"
+#include "iOS/DarkModeDetector.h"
+#include "macOS/MacThemeDetector.h"
+#include "QButtonGroup"
 
 MainWindow *MainWindow::singleton = NULL;
 QString MainWindow::currentPath;
@@ -26,8 +30,12 @@ MainWindow::MainWindow(QWidget *parent)
         singleton = this;
     }
 
+    settingsLoaded = false;
+
     qApp->setOrganizationName("BenProductions");
     qApp->setApplicationName("ADHD");
+
+    qApp->installEventFilter(this);
 
 
 // Preprocessor directives to check the platform
@@ -55,10 +63,25 @@ MainWindow::MainWindow(QWidget *parent)
 
     apiKeyButton = new QPushButton(/*this*/);
     updateApiKeyButtonLabel();
-    darkModeButton = new QPushButton();
-
     connect(apiKeyButton, &QPushButton::clicked, this, &MainWindow::onApiKeyButtonClicked);
-    connect(darkModeButton, &QPushButton::clicked, this, &MainWindow::onDarkModeButtonClicked);
+
+
+    themeComboBox = new QComboBox();
+    QStringList themes = {"Light", "Dark", "Auto"};
+    themeComboBox->addItems(themes);
+    connect(themeComboBox, &QComboBox::currentTextChanged, this, [=]{
+        int index = themeComboBox->currentIndex();
+        if (index == 0) {
+            isAutoTheme = false;
+            handleThemeChange(false);
+        } else if (index == 1) {
+            isAutoTheme = false;
+            handleThemeChange(true);
+        } else if (index == 2) {
+            isAutoTheme = true;
+            handleThemeChange(isSystemDark());
+        }
+    });
 
 
     // Create the dropdown menu for voice selection
@@ -69,8 +92,11 @@ MainWindow::MainWindow(QWidget *parent)
         voice = voiceSelectionComboBox->currentText();
     });
 
+
+// fixes mac combo box behavior
 #if defined(Q_OS_MACOS)
     voiceSelectionComboBox->setStyleSheet("combobox-popup: 0;");
+    themeComboBox->setStyleSheet("combobox-popup: 0;");
 #endif
 
 
@@ -143,6 +169,11 @@ MainWindow::MainWindow(QWidget *parent)
     connect(whisperRequest, &OpenAIRequest::requestFinished, textInputField, &QLineEdit::setText);
 
 
+#if defined(Q_OS_IOS)
+    connect(textInputField, &QLineEdit::textChanged, this, &prepareHapticFeedback);
+#endif
+
+
     sendChatButton = new SvgButton(this);
     sendChatButton->setSvgPath(":/images/send.svg");
     sendChatButton->setIconSize(QSize(30,30));
@@ -175,7 +206,7 @@ MainWindow::MainWindow(QWidget *parent)
     drawerButton->setUsingAppColors(true);
 
     connect(SidePanel::self(), &SidePanel::animationStarted, drawerButton, [=]{
-        drawerButton->startColorOverride(drawerButton->defaultColor());
+        drawerButton->startColorOverride(drawerButton->appDefaultColor());
     });
     connect(SidePanel::self(), &SidePanel::animationFinished, drawerButton, [=]{
         drawerButton->stopColorOverride();
@@ -185,7 +216,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     auto vLayout = SidePanel::self()->verticalLayout();
     vLayout->setSpacing(30);
-    vLayout->addWidget(darkModeButton);
+    vLayout->addWidget(themeComboBox);
     vLayout->addWidget(voiceSelectionComboBox);
     vLayout->addStretch();
 
@@ -243,6 +274,10 @@ void MainWindow::sendChat()
 {
     if (textInputField->text() == "") return;
 
+#if defined(Q_OS_IOS)
+//    generateHapticFeedback();
+#endif
+
     OpenAIMessage *userMessage = new OpenAIMessage("", OpenAIMessage::Role::User);
     userMessage->setUserMessage(textInputField->text());
     textInputField->clear();
@@ -291,20 +326,31 @@ void MainWindow::onApiKeyButtonClicked()
     updateApiKeyButtonLabel();
 }
 
-void MainWindow::onDarkModeButtonClicked()
+bool MainWindow::isSystemDark()
 {
-    handleThemeChange(!isDarkMode);
+#if defined(Q_OS_IOS)
+    return isIOSInDarkMode();
+#elif defined(Q_OS_MACOS)
+    return isMacInDarkMode();
+#else
+    // TODO: implement for windows and android
+    return this->isDarkMode;
+#endif
 }
 
-void MainWindow::handleThemeChange(bool isDarkMode) {
+void MainWindow::handleThemeChange(bool isDarkMode)
+{
+    if (this->isDarkMode == isDarkMode) return;
+    if (!settingsLoaded) return;
+
     this->isDarkMode = isDarkMode;
     saveSettings();
     setDarkMode(isDarkMode);
 }
 
-void MainWindow::setDarkMode(bool darkMode)
+void MainWindow::setDarkMode(bool isDarkMode)
 {
-    QString path = darkMode ? ":/style/darkStyle.qss" : ":/style/lightStyle.qss";
+    QString path = isDarkMode ? ":/style/darkStyle.qss" : ":/style/lightStyle.qss";
 
     QFile file(path);
     if (file.open(QFile::ReadOnly | QFile::Text)) {
@@ -316,42 +362,27 @@ void MainWindow::setDarkMode(bool darkMode)
 
 //    0xF2E9FF (light) 0x3D315B (dark)
 
-    QTextCharFormat format = calendarWidget->weekdayTextFormat(Qt::Monday); // weekends
-    QTextCharFormat format2; // header
-
-    if (darkMode) {
-        darkModeButton->setText("Switch to Light Mode");
-        SvgButton::setAppColors(Qt::white, Qt::lightGray, Qt::white, Qt::lightGray);
-
-//        format.setForeground(QBrush(0xF2E9FF));
-        format.setBackground(QBrush(0x3D315B));
-//        format2.setForeground(QBrush(0xF2E9FF));
-        format2.setBackground(QBrush(0x3D315B));
+    if (isDarkMode) {
+        SvgButton::setAppColors(0xF2E9FF, Qt::lightGray, 0xF2E9FF, Qt::lightGray);
     } else {
-        darkModeButton->setText("Switch to Dark Mode");
-        SvgButton::setAppColors(Qt::black, Qt::lightGray, Qt::black, Qt::lightGray);
-
-//        format.setForeground(QBrush(0x3D315B));
-        format.setBackground(QBrush(0xF2E9FF));
-//        format2.setForeground(QBrush(0x3D315B));
-        format2.setBackground(QBrush(0xF2E9FF));
+        SvgButton::setAppColors(0x3D315B, Qt::lightGray, 0x3D315B, Qt::lightGray);
     }
-
-    calendarWidget->setWeekdayTextFormat(Qt::Saturday, format);
-    calendarWidget->setWeekdayTextFormat(Qt::Sunday, format);
-    calendarWidget->setHeaderTextFormat(format2);
-
 }
 
 void MainWindow::saveSettings()
 {
+    if (!settingsLoaded) return;
+
     settings->setValue("apiKey", apiKey);
     settings->setValue("isDarkMode", isDarkMode);
+    settings->setValue("isAutoTheme", isAutoTheme);
     settings->setValue("voice", voice);
 
     settings->setValue("mainWindow/geometry", saveGeometry());
     settings->setValue("mainWindow/windowState", saveState());
 
+    // this will be slow with many events
+    // TODO: maintain list of changed dates
     calendarWidget->saveSettings();
 }
 
@@ -359,15 +390,31 @@ void MainWindow::loadSettings()
 {
     apiKey = settings->value("apiKey").toString();
     isDarkMode = settings->value("isDarkMode").toBool();
+    isAutoTheme = settings->value("isAutoTheme").toBool();
     voice = settings->value("voice").toString();
 
     voiceSelectionComboBox->setCurrentText(voice);
-    setDarkMode(isDarkMode);
+
+    if (isAutoTheme) {
+        themeComboBox->setCurrentIndex(2);
+    } else if (isDarkMode) {
+        themeComboBox->setCurrentIndex(1);
+    } else {
+        themeComboBox->setCurrentIndex(0);
+    }
+
+    if (isAutoTheme) {
+        setDarkMode(isSystemDark());
+    } else {
+        setDarkMode(isDarkMode);
+    }
 
     calendarWidget->loadSettings();
 
     restoreGeometry(settings->value("mainWindow/geometry").toByteArray());
     restoreState(settings->value("mainWindow/windowState").toByteArray());
+
+    settingsLoaded = true;
 }
 
 void MainWindow::updateApiKeyButtonLabel()
@@ -390,6 +437,53 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
         }
     }
 
+    // this prevents the whole app from being pushed up when the virtual keyboard comes up
+    // but it doesn't move the line edit up
+//    if (event->type() == QEvent::InputMethodQuery) {
+//        QInputMethodQueryEvent *imEvt = static_cast<QInputMethodQueryEvent *>(event);
+//        if (imEvt->queries() == Qt::InputMethodQuery::ImCursorRectangle) {
+//            imEvt->setValue(Qt::InputMethodQuery::ImCursorRectangle, QRectF());
+//            return true;
+//        }
+//    }
+
+
+
+    // macOS: caught main window change:  QEvent(ThemeChange, 0x16f193498)
+    // iOS: caught app change:  QEvent(ApplicationPaletteChange, 0x16b590c00)
+
+    if (isAutoTheme) {
+#if defined(Q_OS_IOS)
+        if (obj == qApp && event->type() == QEvent::ApplicationPaletteChange) {
+            handleThemeChange(isSystemDark());
+        }
+#elif defined(Q_OS_MACOS)
+        if (obj == this && event->type() == QEvent::ThemeChange) {
+            handleThemeChange(isSystemDark());
+        }
+#else
+        // TODO: test on windows
+#endif
+    }
+
+    // TODO: use this on windows
+    // attempt to catch dark mode light mode change
+//    switch (event->type()) {
+//    case QEvent::PaletteChange:
+//    case QEvent::ApplicationPaletteChange:
+//    case QEvent::StyleChange:
+//    case QEvent::ThemeChange:
+//        if (obj == qApp) {
+////            qDebug() << "caught app change: " << event;
+//        }
+//        if (obj == this) {
+////            qDebug() << "caught main window change: " << event;
+//        }
+//        break;
+//    default:
+//        break;
+//    }
+
     return QObject::eventFilter(obj, event);
 }
 
@@ -401,8 +495,6 @@ void MainWindow::resizeEvent(QResizeEvent *event)
 
     return QMainWindow::resizeEvent(event);
 }
-
-
 
 
 

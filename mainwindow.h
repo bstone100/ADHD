@@ -8,6 +8,7 @@
 #include <QPushButton>
 #include <QInputDialog>
 #include <QSettings>
+#include <QRadioButton>
 
 class OpenAIRequest;
 class AudioRecorder;
@@ -36,7 +37,8 @@ public:
     static QString currentPath;
 
     void onApiKeyButtonClicked();
-    void onDarkModeButtonClicked();
+
+    bool isSystemDark();
     void handleThemeChange(bool isDarkMode);
 
 protected:
@@ -48,22 +50,26 @@ protected:
 private:
     static MainWindow *singleton;
 
+    bool settingsLoaded;
+
     void updateApiKeyButtonLabel();
 
-    void setDarkMode(bool darkMode);
+    void setDarkMode(bool isDarkMode);
 
     QSettings *settings;
 
     QWidget *centralWidget;
     QVBoxLayout *layout;
     QPushButton *apiKeyButton;
-    QPushButton *darkModeButton;
 
     QString apiKey;
     bool isDarkMode;
+    bool isAutoTheme;
     QString voice;
 
     QComboBox *voiceSelectionComboBox;
+
+    QComboBox *themeComboBox;
 
     SvgButton *sendChatButton;
     QLineEdit *textInputField;

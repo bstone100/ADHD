@@ -3,6 +3,7 @@
 #include <QMouseEvent>
 #include "QRegularExpression"
 #include "QFile"
+#include "iOS/hapticfeedback.h"
 
 QColor SvgButton::s_defaultColor(Qt::black);
 QColor SvgButton::s_disabledColor(Qt::black);
@@ -25,6 +26,10 @@ SvgButton::SvgButton(QWidget *parent) : QPushButton(parent),
     setCursor(Qt::PointingHandCursor);
 
     setStyleSheet("background: transparent; border: none; border-radius: 0px;");
+
+#if defined(Q_OS_IOS)
+    connect(this, &QPushButton::clicked, this, &generateHapticFeedback);
+#endif
 
     usingAppColors = false;
 }
@@ -173,6 +178,26 @@ void SvgButton::paintEvent(QPaintEvent *event) {
 
     // Render the SVG
     renderer.render(&painter, bounds);
+}
+
+QColor SvgButton::appPressedColor()
+{
+    return s_pressedColor;
+}
+
+QColor SvgButton::appHoverColor()
+{
+    return s_hoverColor;
+}
+
+QColor SvgButton::appDisabledColor()
+{
+    return s_disabledColor;
+}
+
+QColor SvgButton::appDefaultColor()
+{
+    return s_defaultColor;
 }
 
 // update the color based on the state of the button

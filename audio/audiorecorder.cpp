@@ -20,6 +20,7 @@
 #include <QMessageBox>
 #include <QApplication>
 #include "../mainwindow.h"
+#include "../iOS/AudioSessionHelper.h"
 
 #if QT_CONFIG(permissions)
   #include <QPermission>
@@ -88,6 +89,10 @@ void AudioRecorder::toggleRecord()
         m_audioRecorder->record();
     } else {
         m_audioRecorder->stop();
+
+#if defined(Q_OS_IOS)
+        QTimer::singleShot(500, this, &deactivateAudioSession);
+#endif
     }
 }
 

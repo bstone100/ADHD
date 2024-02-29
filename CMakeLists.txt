@@ -65,12 +65,39 @@ else()
     endif()
 endif()
 
+
+# Conditionally compile specific sources
+if(APPLE)
+    if(IOS)
+        target_sources(ADHD PRIVATE
+            iOS/hapticfeedbackhelper.mm iOS/hapticfeedback.h
+            iOS/AudioSessionHelper.h iOS/AudioSessionHelper.mm
+            iOS/DarkModeDetector.h iOS/DarkModeDetector.mm
+        )
+    else() # Assuming macOS if not iOS
+        target_sources(ADHD PRIVATE
+            macOS/MacThemeDetector.h macOS/MacThemeDetector.mm
+        )
+    endif()
+endif()
+
+
+
+if(APPLE AND IOS)
+    # Find the UIKit framework
+    find_library(UIKIT_LIBRARY UIKit)
+endif()
+
 target_link_libraries(ADHD PRIVATE
     Qt${QT_VERSION_MAJOR}::Widgets
     Qt${QT_VERSION_MAJOR}::Network
     Qt${QT_VERSION_MAJOR}::Multimedia
     Qt${QT_VERSION_MAJOR}::Svg
+    ${UIKIT_LIBRARY}
 )
+
+
+
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
 # If you are developing for iOS or macOS you should consider setting an

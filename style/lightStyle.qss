@@ -1,7 +1,7 @@
 /* QWidget (Light Mode) */
 QWidget {
     background-color: #F2E9FF; /* Light background color */
-    color: black;
+    color: #3D315B;
     font-family: SF Pro Rounded;
     font-size: 14px;
     font-weight: 600;
@@ -35,7 +35,7 @@ QComboBox {
     border: 2px solid #5A4EA6; /* Border color */
     border-radius: 5px;
     padding: 4px 8px;
-    color: black; /* Dark text color */
+    color: #3D315B; /* Dark text color */
     background-color: transparent;
 }
 
@@ -44,11 +44,12 @@ QComboBox QAbstractItemView {
     border: 1px solid #5A4EA6; /* Border color */
     border-radius: 5px; /* Rounded corners */
     selection-background-color: #7A71E7;
+    color: #3D315B;
 }
 
 QLineEdit {
     background-color: transparent; /* Light background color */
-    border: 2px solid black; /* Border color */
+    border: 2px solid #3D315B; /* Border color */
     border-radius: 20px;
     padding: 4px 8px;
 }
@@ -77,23 +78,33 @@ QToolButton {
     font-weight: bold;
     border: none;
     background-color: transparent;
-    color: black;
+    color: #3D315B;
 }
 
 QToolButton:hover, QToolButton:pressed {
     font-weight: bold;
     border: none;
     background-color: transparent;
-    color: black;
+    color: #3D315B;
 }
 
 QCalendarWidget QAbstractItemView
 {
     background-color: #F2E9FF;
     selection-background-color: #3D315B; /* the color of the selected cell */
-    selection-color: white; /* the color of the selected cell's text */
+    selection-color: #F2E9FF; /* the color of the selected cell's text */
 }
 
+/* header row */
+QCalendarWidget QWidget {
+    alternate-background-color: #F2E9FF;
+}
+
+/* navigation bar */
+QCalendarWidget QWidget#qt_calendar_navigationbar
+{
+    background-color: #F2E9FF;
+}
 
 
 
