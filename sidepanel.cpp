@@ -13,11 +13,14 @@ SidePanel::SidePanel(QWidget *parent) : QWidget(parent) {
         singleton = this;
     }
 
+
     closeButton = new QPushButton(MainWindow::self());
     closeButton->setStyleSheet("background: transparent; border: none; border-radius: 0px;");
     closeButton->hide();
 
+#if defined(Q_OS_MACOS)
     connect(closeButton, &QPushButton::clicked, this, &SidePanel::collapse);
+#endif
 
     setAttribute(Qt::WA_StyledBackground);
     setStyleSheet("SidePanel{background-color: #d8c7f0;}");
@@ -33,8 +36,6 @@ SidePanel::SidePanel(QWidget *parent) : QWidget(parent) {
     expandAnimation->setEasingCurve(QEasingCurve::OutCubic);
 
     connect(expandAnimation, &QPropertyAnimation::finished, this, [=]{
-        qDebug() << "expand finished";
-
         isPanelOpen = true;
         emit animationFinished(isPanelOpen);
     });
@@ -43,25 +44,25 @@ SidePanel::SidePanel(QWidget *parent) : QWidget(parent) {
     collapseAnimation->setEasingCurve(QEasingCurve::OutCubic);
 
     connect(collapseAnimation, &QPropertyAnimation::finished, this, [=]{
-        qDebug() << "collapse finished";
-
         isPanelOpen = false;
         emit animationFinished(isPanelOpen);
     });
 
     connect(expandAnimation, &QPropertyAnimation::valueChanged, this, [=]{
-        for (int i = 0; i < vLayout->count(); ++i) {
-            if (QWidget* widget = vLayout->itemAt(i)->widget()) {
-                widget->updateGeometry();
-            }
+        if (QWidget* widget = vLayout->itemAt(0)->widget()) {
+            widget->setGeometry(9, 68, calculateWidth() - 18, 31);
+        }
+        if (QWidget* widget = vLayout->itemAt(1)->widget()) {
+            widget->setGeometry(9, 129, calculateWidth() - 18, 31);
         }
     });
 
     connect(collapseAnimation, &QPropertyAnimation::valueChanged, this, [=]{
-        for (int i = 0; i < vLayout->count(); ++i) {
-            if (QWidget* widget = vLayout->itemAt(i)->widget()) {
-                widget->updateGeometry();
-            }
+        if (QWidget* widget = vLayout->itemAt(0)->widget()) {
+            widget->setGeometry(9, 68, calculateWidth() - 18, 31);
+        }
+        if (QWidget* widget = vLayout->itemAt(1)->widget()) {
+            widget->setGeometry(9, 129, calculateWidth() - 18, 31);
         }
     });
 }
@@ -119,8 +120,6 @@ void SidePanel::touchEvent(QTouchEvent *event) {
 
     switch (event->type()) {
     case QEvent::TouchBegin:
-        qDebug() << "touch begin";
-
         if (isHidden()) {
             setGeometry(closedGeometry());
             show();
@@ -153,20 +152,19 @@ void SidePanel::touchEvent(QTouchEvent *event) {
             int halfwayPos = calculateWidth() / 2;
             int currentPos = x() + width();
             if (currentPos < halfwayPos && currentPos + dx >= halfwayPos) {
-                qDebug() << "left to right haptic";
                 generateHapticFeedback();
             } else if (currentPos > halfwayPos && currentPos + dx <= halfwayPos) {
-                qDebug() << "right to left haptic";
                 generateHapticFeedback();
             }
 #endif
 
             move(newX, y());
 
-            for (int i = 0; i < vLayout->count(); ++i) {
-                if (QWidget* widget = vLayout->itemAt(i)->widget()) {
-                    widget->updateGeometry();
-                }
+            if (QWidget* widget = vLayout->itemAt(0)->widget()) {
+                widget->setGeometry(9, 68, calculateWidth() - 18, 31);
+            }
+            if (QWidget* widget = vLayout->itemAt(1)->widget()) {
+                widget->setGeometry(9, 129, calculateWidth() - 18, 31);
             }
         }
 
@@ -174,7 +172,7 @@ void SidePanel::touchEvent(QTouchEvent *event) {
     }
     break;
     case QEvent::TouchEnd:
-        qDebug() << "touch end";
+        previousPoint = currentTouchPoint;
 
         handleSwipeEnd();
         break;
@@ -185,11 +183,15 @@ void SidePanel::touchEvent(QTouchEvent *event) {
 
 void SidePanel::handleSwipeEnd() {
 
+    if (previousPoint == touchStartPoint && closeButtonGeometry().contains(previousPoint)) {
+        collapse();
+        return;
+    }
+
     float velocity = (float)dx / (float)(dt + 1); // pixels per millisecond
 
     int halfwayPos = calculateWidth() / 2;
     int currentPos = x() + width();
-    qDebug() << "currentPos:" << currentPos;
 
     const float thresholdVelocity = 0.3;
 
@@ -227,8 +229,6 @@ bool SidePanel::collapsing()
 }
 
 void SidePanel::expand() {
-    qDebug() << "expand()";
-
     if (collapsing()) {
         collapseAnimation->stop();
     }
@@ -259,7 +259,6 @@ void SidePanel::collapse() {
     if (isHidden()) {
         return;
     }
-    qDebug() << "collapse()";
 
     if (expanding()) {
         expandAnimation->stop();
