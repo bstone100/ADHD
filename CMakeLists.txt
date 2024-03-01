@@ -73,10 +73,12 @@ if(APPLE)
             iOS/hapticfeedbackhelper.mm iOS/hapticfeedback.h
             iOS/AudioSessionHelper.h iOS/AudioSessionHelper.mm
             iOS/DarkModeDetector.h iOS/DarkModeDetector.mm
+            macOS/AudioRecorderBridge.h macOS/AudioRecorderBridge.mm
         )
     else() # Assuming macOS if not iOS
         target_sources(ADHD PRIVATE
             macOS/MacThemeDetector.h macOS/MacThemeDetector.mm
+            macOS/AudioRecorderBridge.h macOS/AudioRecorderBridge.mm
         )
     endif()
 endif()
@@ -88,15 +90,20 @@ if(APPLE AND IOS)
     find_library(UIKIT_LIBRARY UIKit)
 endif()
 
+if(APPLE)
+    find_library(AVFOUNDATION_FRAMEWORK AVFoundation)
+    find_library(COREAUDIO_FRAMEWORK CoreAudio)
+endif()
+
 target_link_libraries(ADHD PRIVATE
     Qt${QT_VERSION_MAJOR}::Widgets
     Qt${QT_VERSION_MAJOR}::Network
     Qt${QT_VERSION_MAJOR}::Multimedia
     Qt${QT_VERSION_MAJOR}::Svg
     ${UIKIT_LIBRARY}
+    ${AVFOUNDATION_FRAMEWORK}
+    ${COREAUDIO_FRAMEWORK}
 )
-
-
 
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.

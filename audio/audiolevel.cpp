@@ -2,13 +2,20 @@
 // SPDX-License-Identifier: LicenseRef-Qt-Commercial OR BSD-3-Clause
 
 #include "audiolevel.h"
+#include "audiorecorder.h"
 
 #include <QPainter>
 
 AudioLevel::AudioLevel(QWidget *parent) : QWidget(parent)
 {
-    setMinimumHeight(15);
-    setMaximumHeight(50);
+//    setMinimumHeight(15);
+//    setMaximumHeight(50);
+    setFixedSize(30,30);
+
+    fillColor = QColorConstants::Svg::purple;
+
+    timer.setInterval(25);
+    connect(&timer, &QTimer::timeout, this, &AudioLevel::updateOpacity);
 }
 
 void AudioLevel::setLevel(qreal level)
@@ -24,10 +31,107 @@ void AudioLevel::paintEvent(QPaintEvent *event)
     Q_UNUSED(event);
 
     QPainter painter(this);
-    // draw level
-    qreal widthLevel = m_level * width();
-    painter.fillRect(0, 0, widthLevel, height(), Qt::red);
-    // clear the rest of the control
-    painter.fillRect(widthLevel, 0, width(), height(), Qt::black);
+
+
+    if (!isRecording()) {
+        painter.fillRect(rect(), Qt::transparent);
+        return;
+    }
+
+
+    // these numbers represent coordinates in the microphone svg 512x512 view box
+    qreal topLeftX = (198.4/512) * width();
+    qreal topLeftY = (42.2/512) * height();
+
+    qreal bottomRightX = (315.6/512) * width();
+    qreal bottomRightY = (289.3/512) * height();
+
+//    qreal micWidth = bottomRightX - topLeftX;
+    qreal micHeight = bottomRightY - topLeftY;
+    qreal levelHeight = m_level * micHeight;
+
+    qreal actualTopLeftY = topLeftY + (micHeight - levelHeight);
+
+
+
+    painter.setRenderHint(QPainter::Antialiasing);
+
+    // Set the dynamic opacity for the painter
+    painter.setOpacity(opacity);
+
+    // Set the brush to a solid red color
+    painter.setBrush(Qt::red);
+    painter.setPen(Qt::NoPen); // No border
+
+    // Calculate the center and size for the circle
+    int diameter = 7;
+    int x = width() - diameter;
+    int y = 0;
+
+    // Draw the circle
+    painter.drawEllipse(x, y, diameter, diameter);
+
+
+    QRectF levelRect(QPointF(topLeftX, actualTopLeftY), QPointF(bottomRightX, bottomRightY));
+
+    painter.setOpacity(1.0);
+    painter.fillRect(levelRect, fillColor);
+}
+
+void AudioLevel::updateOpacity()
+{
+    static const qreal minOpacity = 0.0;
+    static const qreal maxOpacity = 0.6;
+    static const qreal opacityChange = 0.02;
+    if (fadingOut) {
+        opacity -= opacityChange;
+        if (opacity <= minOpacity) {
+            opacity = minOpacity;
+            fadingOut = false;
+        }
+    } else {
+        opacity += opacityChange;
+        if (opacity >= maxOpacity) {
+            opacity = maxOpacity;
+            fadingOut = true;
+        }
+    }
+}
+
+AudioRecorder *AudioLevel::getAudioRecorder() const
+{
+    return audioRecorder;
+}
+
+void AudioLevel::setAudioRecorder(AudioRecorder *newAudioRecorder)
+{
+    audioRecorder = newAudioRecorder;
+}
+
+bool AudioLevel::isRecording()
+{
+    if (audioRecorder) {
+        return audioRecorder->currentlyRecording();
+    }
+    return false;
+}
+
+void AudioLevel::start()
+{
+    if (!timer.isActive()) {
+        fadingOut = false;
+        opacity = 0.0;
+        timer.start();
+    }
+}
+
+void AudioLevel::stop()
+{
+    timer.stop();
+}
+
+void AudioLevel::setFillColor(const QColor &newFillColor)
+{
+    fillColor = newFillColor;
 }
 

@@ -26,10 +26,15 @@ public:
     AudioRecorder();
     void init();
 
-    void togglePause();
     void toggleRecord();
 
-    QUrl getOutputLocation();
+    AudioLevel *getLevelWidget();
+    void updateLevelWidget();
+    void clearLevelWidget();
+
+    QString getRecordingLocation() const;
+
+    bool currentlyRecording();
 
 signals:
     void recordingFinished();
@@ -37,6 +42,11 @@ signals:
 private:
     QMediaCaptureSession m_captureSession;
     QMediaRecorder *m_audioRecorder = nullptr;
+
+    QString recordingLocation;
+
+    QTimer updateLevelTimer;
+    AudioLevel *levelWidget;
 };
 
 #endif // AUDIORECORDER_H

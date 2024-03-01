@@ -57,6 +57,11 @@ void SvgButton::setIconSize(const QSize &size) {
     updateColor();
 }
 
+bool SvgButton::isUsingAppColors()
+{
+    return usingAppColors;
+}
+
 void SvgButton::setUsingAppColors(bool newUsingAppColors)
 {
     usingAppColors = newUsingAppColors;
@@ -71,7 +76,9 @@ void SvgButton::setAppColors(const QColor &defaultColor, const QColor &disabledC
     s_pressedColor = pressedColor;
 
     foreach (auto button, instances) {
-        button->updateColor();
+        if (button->isUsingAppColors()) {
+            button->updateColor();
+        }
     }
 }
 

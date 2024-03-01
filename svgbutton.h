@@ -38,6 +38,7 @@ public:
     static QString modifySvgColor(const QString &svgContent, const QColor &color);
     static QIcon createIconFromSVG(const QString &svgPath, const QColor &color, QSize iconSize = QSize(24, 24));
 
+    bool isUsingAppColors();
     void setUsingAppColors(bool newUsingAppColors);
     static void setAppColors(const QColor &defaultColor, const QColor &disabledColor,
                              const QColor &hoverColor, const QColor &pressedColor);

@@ -21,17 +21,19 @@
 #include <QApplication>
 #include "../mainwindow.h"
 #include "../iOS/AudioSessionHelper.h"
+#include "../macOS/AudioRecorderBridge.h"
 
 #if QT_CONFIG(permissions)
   #include <QPermission>
 #endif
-
 
 AudioRecorder::AudioRecorder()
 {
     // audio input initialization
     init();
 
+// Code for platforms other than Apple's
+#if !defined(Q_OS_DARWIN)
     m_audioRecorder = new QMediaRecorder(this);
     m_captureSession.setRecorder(m_audioRecorder);
     m_captureSession.setAudioInput(new QAudioInput(this));
@@ -41,6 +43,14 @@ AudioRecorder::AudioRecorder()
             emit recordingFinished();
         }
     });
+#endif
+
+    updateLevelTimer.setSingleShot(false);
+    updateLevelTimer.setInterval(10);
+
+    connect(&updateLevelTimer, &QTimer::timeout, this, &AudioRecorder::updateLevelWidget);
+
+    recordingLocation = MainWindow::currentPath + QDir::separator() + "latestRecording.wav";
 }
 
 void AudioRecorder::init()
@@ -62,19 +72,35 @@ void AudioRecorder::init()
 
 void AudioRecorder::toggleRecord()
 {
+#if defined(Q_OS_DARWIN)
+    // apple
+    if (!isRecording()) {
+        setOutputFileName(recordingLocation.toUtf8().data());
+        startRecording();
+
+        updateLevelTimer.start();
+        getLevelWidget()->start();
+    } else {
+        updateLevelTimer.stop();
+        getLevelWidget()->stop();
+        clearLevelWidget();
+
+        stopRecording();
+        emit recordingFinished();
+    }
+#else
+    // not apple
     if (m_audioRecorder->recorderState() == QMediaRecorder::StoppedState) {
 
         m_captureSession.audioInput()->setDevice(QMediaDevices::defaultAudioInput());
 
-        QString tempFilePath = MainWindow::currentPath + QDir::separator() + "latestRecording.wav";
-
         // Check if the file exists and delete it if so
-        QFile file(tempFilePath);
+        QFile file(recordingLocation);
         if (file.exists()) {
             file.remove();
         }
 
-        m_audioRecorder->setOutputLocation(QUrl::fromLocalFile(tempFilePath));
+        m_audioRecorder->setOutputLocation(QUrl::fromLocalFile(recordingLocation));
 
         QMediaFormat format;
         format.setFileFormat(QMediaFormat::Wave);
@@ -87,27 +113,66 @@ void AudioRecorder::toggleRecord()
         m_audioRecorder->setEncodingMode(QMediaRecorder::ConstantBitRateEncoding);
 
         m_audioRecorder->record();
+
+        updateLevelTimer.start();
     } else {
+        updateLevelTimer.stop();
+        clearLevelWidget();
+
         m_audioRecorder->stop();
 
-#if defined(Q_OS_IOS)
-        QTimer::singleShot(500, this, &deactivateAudioSession);
-#endif
+        //#if defined(Q_OS_IOS)
+        //        QTimer::singleShot(500, this, &deactivateAudioSession);
+        //#endif
     }
+#endif
 }
 
-QUrl AudioRecorder::getOutputLocation()
+AudioLevel *AudioRecorder::getLevelWidget()
 {
-    return m_audioRecorder->outputLocation();
+    if (!levelWidget) {
+        levelWidget = new AudioLevel(MainWindow::self());
+        levelWidget->setAudioRecorder(this);
+    }
+    return levelWidget;
 }
 
-
-void AudioRecorder::togglePause()
+void AudioRecorder::updateLevelWidget()
 {
-    if (m_audioRecorder->recorderState() != QMediaRecorder::PausedState)
-        m_audioRecorder->pause();
-    else
-        m_audioRecorder->record();
+#if defined(Q_OS_DARWIN)
+    float level = getCurrentLevel();
+    level = qBound(0.0, level, 1.0);
+    level = qMin(level * 3, 1.0);
+
+    getLevelWidget()->setLevel(level);
+#else
+    getLevelWidget()->setLevel(1.0);
+#endif
 }
+
+void AudioRecorder::clearLevelWidget()
+{
+    getLevelWidget()->setLevel(0.0);
+}
+
+QString AudioRecorder::getRecordingLocation() const
+{
+    return recordingLocation;
+}
+
+bool AudioRecorder::currentlyRecording()
+{
+#if defined(Q_OS_DARWIN)
+    return isRecording();
+#else
+    return m_audioRecorder->recorderState() != QMediaRecorder::StoppedState;
+#endif
+}
+
+
+
+
+
+
 
 

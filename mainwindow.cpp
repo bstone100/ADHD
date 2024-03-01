@@ -19,6 +19,7 @@
 #include "iOS/DarkModeDetector.h"
 #include "macOS/MacThemeDetector.h"
 #include "QButtonGroup"
+#include "audio/audiolevel.h"
 
 MainWindow *MainWindow::singleton = NULL;
 QString MainWindow::currentPath;
@@ -112,7 +113,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     audioRecorder = new AudioRecorder();
 
-    recordAudioButton = new SvgButton(this);
+    recordAudioButton = new SvgButton(audioRecorder->getLevelWidget());
     recordAudioButton->setSvgPath(":/images/microphone.svg");
     recordAudioButton->setIconSize(QSize(30,30));
     recordAudioButton->setUsingAppColors(true);
@@ -231,14 +232,13 @@ MainWindow::MainWindow(QWidget *parent)
     QHBoxLayout *secondRowLayout = new QHBoxLayout();
     secondRowLayout->setSpacing(5);
     secondRowLayout->addWidget(textInputField);
-    secondRowLayout->addWidget(recordAudioButton);
+    secondRowLayout->addWidget(audioRecorder->getLevelWidget());
     secondRowLayout->addWidget(sendChatButton);
 
     // Adding layouts and widgets to the main layout
     layout->addLayout(topRowLayout);
     layout->addWidget(calendarWidget, 1); // Calendar takes most of the space
     layout->addLayout(secondRowLayout);
-//    layout->addSpacing(10);
 
     auto margins = layout->contentsMargins();
     margins.setTop(0);
@@ -288,7 +288,7 @@ void MainWindow::sendChat()
 
 void MainWindow::transcribe()
 {
-    whisperRequest->setFilePath(audioRecorder->getOutputLocation().toLocalFile());
+    whisperRequest->setFilePath(audioRecorder->getRecordingLocation());
     whisperRequest->execute();
 }
 
@@ -364,8 +364,10 @@ void MainWindow::setDarkMode(bool isDarkMode)
 
     if (isDarkMode) {
         SvgButton::setAppColors(0xF2E9FF, Qt::lightGray, 0xF2E9FF, Qt::lightGray);
+        audioRecorder->getLevelWidget()->setFillColor(0xF2E9FF);
     } else {
         SvgButton::setAppColors(0x3D315B, Qt::lightGray, 0x3D315B, Qt::lightGray);
+        audioRecorder->getLevelWidget()->setFillColor(0x3D315B);
     }
 }
 
