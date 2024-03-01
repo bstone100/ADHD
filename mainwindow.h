@@ -9,6 +9,7 @@
 #include <QInputDialog>
 #include <QSettings>
 #include <QRadioButton>
+#include <QTouchEvent>
 
 class OpenAIRequest;
 class AudioRecorder;

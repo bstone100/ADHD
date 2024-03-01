@@ -20,6 +20,7 @@
 #include "macOS/MacThemeDetector.h"
 #include "QButtonGroup"
 #include "audio/audiolevel.h"
+#include "QGestureEvent"
 
 MainWindow *MainWindow::singleton = NULL;
 QString MainWindow::currentPath;
@@ -214,6 +215,7 @@ MainWindow::MainWindow(QWidget *parent)
     });
 
     connect(drawerButton, &QPushButton::clicked, SidePanel::self(), &SidePanel::toggle);
+
 
     auto vLayout = SidePanel::self()->verticalLayout();
     vLayout->setSpacing(30);
@@ -439,6 +441,22 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
         }
     }
 
+
+    switch (event->type()) {
+    case QEvent::TouchBegin:
+    case QEvent::TouchUpdate:
+    case QEvent::TouchEnd:
+        // route all touch events through the side panel
+        SidePanel::self()->touchEvent(static_cast<QTouchEvent*>(event));
+        break;
+    default:
+        break;
+    }
+
+
+
+
+
     // this prevents the whole app from being pushed up when the virtual keyboard comes up
     // but it doesn't move the line edit up
 //    if (event->type() == QEvent::InputMethodQuery) {
@@ -497,10 +515,6 @@ void MainWindow::resizeEvent(QResizeEvent *event)
 
     return QMainWindow::resizeEvent(event);
 }
-
-
-
-
 
 
 

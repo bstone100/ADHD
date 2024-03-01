@@ -115,8 +115,10 @@ void AudioRecorder::toggleRecord()
         m_audioRecorder->record();
 
         updateLevelTimer.start();
+        getLevelWidget()->start();
     } else {
         updateLevelTimer.stop();
+        getLevelWidget()->stop();
         clearLevelWidget();
 
         m_audioRecorder->stop();

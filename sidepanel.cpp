@@ -3,6 +3,7 @@
 #include <QPushButton>
 #include <QVBoxLayout>
 #include <QPropertyAnimation>
+#include "QEvent"
 
 SidePanel *SidePanel::singleton = NULL;
 
@@ -15,11 +16,7 @@ SidePanel::SidePanel(QWidget *parent) : QWidget(parent) {
     closeButton->setStyleSheet("background: transparent; border: none; border-radius: 0px;");
     closeButton->hide();
 
-    connect(closeButton, &QPushButton::clicked, this, [=]{
-        if (isVisible()) {
-            toggle();
-        }
-    });
+    connect(closeButton, &QPushButton::clicked, this, &SidePanel::collapse);
 
     setAttribute(Qt::WA_StyledBackground);
     setStyleSheet("SidePanel{background-color: #d8c7f0;}");
@@ -36,6 +33,20 @@ SidePanel *SidePanel::self()
         singleton = new SidePanel(MainWindow::self());
     }
     return singleton;
+}
+
+void SidePanel::expand()
+{
+    if (isHidden()) {
+        toggle();
+    }
+}
+
+void SidePanel::collapse()
+{
+    if (isVisible()) {
+        toggle();
+    }
 }
 
 void SidePanel::toggle() {
@@ -103,9 +114,37 @@ void SidePanel::updateSize()
     closeButton->setGeometry(closeButtonGeometry);
 }
 
+bool SidePanel::event(QEvent *event)
+{
+    return QWidget::event(event);
+}
+
 int SidePanel::calculateWidth() const {
     return qMin(MainWindow::self()->width() * .75, 300.0);
 }
 
+void SidePanel::touchEvent(QTouchEvent *event)
+{
+    const QList<QTouchEvent::TouchPoint> &touchPoints = event->points();
+    const QTouchEvent::TouchPoint &touchPoint = touchPoints.first();
+
+    if (event->type() == QEvent::TouchBegin) {
+        qDebug() << "touch begin";
+        touchStartPoint = touchPoint.position().toPoint();
+        swipeFromLeftDetected = false; // Reset detection flag
+    } else if (event->type() == QEvent::TouchEnd) {
+        int dx = touchPoint.position().x() - touchStartPoint.x();
+        qDebug() << "touch end";
+
+        // Consider it a "swipe from left" if the swipe started near the left edge
+        // and moved rightward significantly
+        if (touchStartPoint.x() < 50 && dx > 100) { // Threshold values, adjust as needed
+            swipeFromLeftDetected = true;
+            //            toggle(); // Your toggle function to show/hide the panel
+            expand();
+            qDebug() << "expanding side panel";
+        }
+    }
+}
 
 
