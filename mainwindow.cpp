@@ -68,7 +68,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(apiKeyButton, &QPushButton::clicked, this, &MainWindow::onApiKeyButtonClicked);
 
 
-    themeComboBox = new QComboBox();
+    themeComboBox = new QComboBox(SidePanel::self());
     QStringList themes = {"Light", "Dark", "Auto"};
     themeComboBox->addItems(themes);
     connect(themeComboBox, &QComboBox::currentTextChanged, this, [=]{
@@ -84,15 +84,17 @@ MainWindow::MainWindow(QWidget *parent)
             handleThemeChange(isSystemDark());
         }
     });
+    themeComboBox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
 
 
     // Create the dropdown menu for voice selection
-    voiceSelectionComboBox = new QComboBox();
+    voiceSelectionComboBox = new QComboBox(SidePanel::self());
     QStringList voices = {"alloy", "echo", "fable", "onyx", "nova", "shimmer"};
     voiceSelectionComboBox->addItems(voices);
     connect(voiceSelectionComboBox, &QComboBox::currentTextChanged, this, [=]{
         voice = voiceSelectionComboBox->currentText();
     });
+    voiceSelectionComboBox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
 
 
 // fixes mac combo box behavior
@@ -456,7 +458,6 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
 
 
 
-
     // this prevents the whole app from being pushed up when the virtual keyboard comes up
     // but it doesn't move the line edit up
 //    if (event->type() == QEvent::InputMethodQuery) {
@@ -509,9 +510,7 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
 
 void MainWindow::resizeEvent(QResizeEvent *event)
 {
-    if (SidePanel::self()->isVisible()) {
-        SidePanel::self()->updateSize();
-    }
+    SidePanel::self()->updateSize();
 
     return QMainWindow::resizeEvent(event);
 }

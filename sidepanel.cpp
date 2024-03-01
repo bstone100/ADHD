@@ -4,6 +4,7 @@
 #include <QVBoxLayout>
 #include <QPropertyAnimation>
 #include "QEvent"
+#include "iOS/hapticfeedback.h"
 
 SidePanel *SidePanel::singleton = NULL;
 
@@ -25,6 +26,44 @@ SidePanel::SidePanel(QWidget *parent) : QWidget(parent) {
     setLayout(vLayout);
 
     hide();
+
+    isPanelOpen = false;
+
+    expandAnimation = new QPropertyAnimation(this, "geometry");
+    expandAnimation->setEasingCurve(QEasingCurve::OutCubic);
+
+    connect(expandAnimation, &QPropertyAnimation::finished, this, [=]{
+        qDebug() << "expand finished";
+
+        isPanelOpen = true;
+        emit animationFinished(isPanelOpen);
+    });
+
+    collapseAnimation = new QPropertyAnimation(this, "geometry");
+    collapseAnimation->setEasingCurve(QEasingCurve::OutCubic);
+
+    connect(collapseAnimation, &QPropertyAnimation::finished, this, [=]{
+        qDebug() << "collapse finished";
+
+        isPanelOpen = false;
+        emit animationFinished(isPanelOpen);
+    });
+
+    connect(expandAnimation, &QPropertyAnimation::valueChanged, this, [=]{
+        for (int i = 0; i < vLayout->count(); ++i) {
+            if (QWidget* widget = vLayout->itemAt(i)->widget()) {
+                widget->updateGeometry();
+            }
+        }
+    });
+
+    connect(collapseAnimation, &QPropertyAnimation::valueChanged, this, [=]{
+        for (int i = 0; i < vLayout->count(); ++i) {
+            if (QWidget* widget = vLayout->itemAt(i)->widget()) {
+                widget->updateGeometry();
+            }
+        }
+    });
 }
 
 SidePanel *SidePanel::self()
@@ -35,83 +74,13 @@ SidePanel *SidePanel::self()
     return singleton;
 }
 
-void SidePanel::expand()
-{
-    if (isHidden()) {
-        toggle();
-    }
-}
-
-void SidePanel::collapse()
-{
-    if (isVisible()) {
-        toggle();
-    }
-}
-
-void SidePanel::toggle() {
-
-    QPropertyAnimation *animation = new QPropertyAnimation(this, "geometry");
-    animation->setDuration(200); // Animation duration in milliseconds
-    animation->setEasingCurve(QEasingCurve::InOutCubic);
-
-    int width = calculateWidth();
-    QRect closedGeometry(-width, 0, width, MainWindow::self()->height());
-    QRect openGeometry(0, 0, width, MainWindow::self()->height());
-
-    bool aboutToOpen = isHidden();
-
-    QRect endRect;
-    if (aboutToOpen) {
-        setGeometry(closedGeometry);
-        show();
-        endRect = openGeometry;
-
-        QRect closeButtonGeometry(width, 0, MainWindow::self()->width() - width, MainWindow::self()->height());
-        closeButton->setGeometry(closeButtonGeometry);
-        closeButton->show();
-    } else {
-        connect(animation, &QPropertyAnimation::finished, this, &QWidget::hide);
-        endRect = closedGeometry;
-
-        closeButton->hide();
-    }
-
-    connect(animation, &QPropertyAnimation::finished, this, [=]{emit animationFinished(aboutToOpen);});
-
-    animation->setStartValue(geometry());
-    animation->setEndValue(endRect);
-
-// prevent flickering temporary fix
-#if defined(Q_OS_IOS)
-    for (int i = 0; i < vLayout->count(); ++i) {
-        if (QWidget* widget = vLayout->itemAt(i)->widget()) {
-            widget->setUpdatesEnabled(false);
-        }
-    }
-    connect(animation, &QPropertyAnimation::finished, this, [this]{
-        for (int i = 0; i < vLayout->count(); ++i) {
-            if (QWidget* widget = vLayout->itemAt(i)->widget()) {
-                widget->setUpdatesEnabled(true);
-            }
-        }
-    });
-#endif
-
-    animation->start(QPropertyAnimation::DeleteWhenStopped);
-
-    emit animationStarted(aboutToOpen);
-}
-
 // when main window resizes
 void SidePanel::updateSize()
 {
-    int width = calculateWidth();
-    QRect openGeometry(0, 0, width, MainWindow::self()->height());
-    setGeometry(openGeometry);
-
-    QRect closeButtonGeometry(width, 0, MainWindow::self()->width() - width, MainWindow::self()->height());
-    closeButton->setGeometry(closeButtonGeometry);
+    if (isPanelOpen && !collapsing()) {
+        setGeometry(openGeometry());
+        closeButton->setGeometry(closeButtonGeometry());
+    }
 }
 
 bool SidePanel::event(QEvent *event)
@@ -123,28 +92,193 @@ int SidePanel::calculateWidth() const {
     return qMin(MainWindow::self()->width() * .75, 300.0);
 }
 
-void SidePanel::touchEvent(QTouchEvent *event)
+QRect SidePanel::closedGeometry()
 {
-    const QList<QTouchEvent::TouchPoint> &touchPoints = event->points();
-    const QTouchEvent::TouchPoint &touchPoint = touchPoints.first();
+    int width = calculateWidth();
+    return QRect(-width, 0, width, MainWindow::self()->height());
+}
 
-    if (event->type() == QEvent::TouchBegin) {
+QRect SidePanel::openGeometry()
+{
+    int width = calculateWidth();
+    return QRect(0, 0, width, MainWindow::self()->height());
+}
+
+QRect SidePanel::closeButtonGeometry()
+{
+    int width = calculateWidth();
+    return QRect(width, 0, MainWindow::self()->width() - width, MainWindow::self()->height());
+}
+
+void SidePanel::touchEvent(QTouchEvent *event) {
+    const QList<QTouchEvent::TouchPoint> &touchPoints = event->points();
+    if (touchPoints.isEmpty()) return;
+
+    const QTouchEvent::TouchPoint &touchPoint = touchPoints.first();
+    QPoint currentTouchPoint = touchPoint.position().toPoint();
+
+    switch (event->type()) {
+    case QEvent::TouchBegin:
         qDebug() << "touch begin";
-        touchStartPoint = touchPoint.position().toPoint();
-        swipeFromLeftDetected = false; // Reset detection flag
-    } else if (event->type() == QEvent::TouchEnd) {
-        int dx = touchPoint.position().x() - touchStartPoint.x();
+
+        if (isHidden()) {
+            setGeometry(closedGeometry());
+            show();
+        }
+
+#if defined(Q_OS_IOS)
+        prepareHapticFeedback();
+#endif
+
+        dx = 0;
+        dt = 0;
+
+        stopwatch.start();
+
+        touchStartPoint = currentTouchPoint;
+        previousPoint = currentTouchPoint;
+
+        break;
+    case QEvent::TouchUpdate:
+    {
+        dx = currentTouchPoint.x() - previousPoint.x();
+        dt = stopwatch.restart();
+
+        int newX = qBound(-calculateWidth(), x() + dx, 0); // range of x values
+
+        const int edgeThreshold = 10; // maximum distance from left edge to be considered a swipe
+
+        if (isPanelOpen || touchStartPoint.x() <= edgeThreshold) { // attempting to close or open
+#if defined(Q_OS_IOS)
+            int halfwayPos = calculateWidth() / 2;
+            int currentPos = x() + width();
+            if (currentPos < halfwayPos && currentPos + dx >= halfwayPos) {
+                qDebug() << "left to right haptic";
+                generateHapticFeedback();
+            } else if (currentPos > halfwayPos && currentPos + dx <= halfwayPos) {
+                qDebug() << "right to left haptic";
+                generateHapticFeedback();
+            }
+#endif
+
+            move(newX, y());
+
+            for (int i = 0; i < vLayout->count(); ++i) {
+                if (QWidget* widget = vLayout->itemAt(i)->widget()) {
+                    widget->updateGeometry();
+                }
+            }
+        }
+
+        previousPoint = currentTouchPoint;
+    }
+    break;
+    case QEvent::TouchEnd:
         qDebug() << "touch end";
 
-        // Consider it a "swipe from left" if the swipe started near the left edge
-        // and moved rightward significantly
-        if (touchStartPoint.x() < 50 && dx > 100) { // Threshold values, adjust as needed
-            swipeFromLeftDetected = true;
-            //            toggle(); // Your toggle function to show/hide the panel
-            expand();
-            qDebug() << "expanding side panel";
+        handleSwipeEnd();
+        break;
+    default:
+        break;
+    }
+}
+
+void SidePanel::handleSwipeEnd() {
+
+    float velocity = (float)dx / (float)(dt + 1); // pixels per millisecond
+
+    int halfwayPos = calculateWidth() / 2;
+    int currentPos = x() + width();
+    qDebug() << "currentPos:" << currentPos;
+
+    const float thresholdVelocity = 0.3;
+
+    if (isPanelOpen) { // decide whether to close or stay open (right to left swipe)
+        if (currentPos < halfwayPos || velocity < -thresholdVelocity) {
+            collapse(); // close
+        } else {
+            expand(); // stay open
+        }
+    } else { // decide whether to open or stay closed (left to right swipe)
+        if (currentPos >= halfwayPos || velocity > thresholdVelocity) {
+            expand(); // open
+        } else {
+            collapse(); // stay closed
         }
     }
 }
+
+void SidePanel::toggle() {
+    if (isPanelOpen || expanding()) {
+        collapse();
+    } else if (!isPanelOpen || collapsing()) {
+        expand();
+    }
+}
+
+bool SidePanel::expanding()
+{
+    return expandAnimation->state() == QPropertyAnimation::Running;
+}
+
+bool SidePanel::collapsing()
+{
+    return collapseAnimation->state() == QPropertyAnimation::Running;
+}
+
+void SidePanel::expand() {
+    qDebug() << "expand()";
+
+    if (collapsing()) {
+        collapseAnimation->stop();
+    }
+
+    if (isHidden()) {
+        setGeometry(closedGeometry());
+        show();
+    }
+    expandAnimation->setStartValue(geometry());
+
+    expandAnimation->setEndValue(openGeometry());
+
+    // duration proportional to distance and velo
+    // v = x/t, t = x/v
+
+    float distance = openGeometry().x() - geometry().x();
+    float velocity = 0.75;
+    expandAnimation->setDuration(distance / velocity); // going for around 200 ms for halfway and 400 ms for full
+
+    closeButton->setGeometry(closeButtonGeometry());
+    closeButton->show();
+
+    expandAnimation->start();
+}
+
+void SidePanel::collapse() {
+
+    if (isHidden()) {
+        return;
+    }
+    qDebug() << "collapse()";
+
+    if (expanding()) {
+        expandAnimation->stop();
+    }
+
+    collapseAnimation->setStartValue(geometry());
+    collapseAnimation->setEndValue(closedGeometry());
+
+    // v = x/t, t = x/v
+    float distance = geometry().x() - closedGeometry().x();
+    float velocity = 0.75;
+    collapseAnimation->setDuration(distance / velocity); // going for around 200 ms for halfway and 400 ms for full
+
+    closeButton->hide();
+
+    collapseAnimation->start();
+}
+
+
+
 
 

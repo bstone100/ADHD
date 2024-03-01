@@ -5,6 +5,8 @@
 #include "QtWidgets/qpushbutton.h"
 #include <QWidget>
 #include "QTouchEvent"
+#include "qelapsedtimer.h"
+#include "qpropertyanimation.h"
 
 class SidePanel : public QWidget {
     Q_OBJECT
@@ -17,7 +19,15 @@ public:
     void collapse();
     void toggle();
 
+    bool expanding();
+    bool collapsing();
+
+    bool isExpanded(){return isPanelOpen;}
+
     void updateSize();
+    QRect closedGeometry();
+    QRect openGeometry();
+    QRect closeButtonGeometry();
 
     QVBoxLayout *verticalLayout(){return vLayout;}
 
@@ -38,9 +48,22 @@ private:
 
     int calculateWidth() const;
 
-
     QPoint touchStartPoint;
-    bool swipeFromLeftDetected = false;
+    QPoint previousPoint;
+
+    // v = x/t
+    int dx;
+    int dt;
+
+    QElapsedTimer stopwatch;
+    bool isPanelOpen;
+
+    void handleSwipeEnd();
+
+    QPropertyAnimation *expandAnimation;
+    QPropertyAnimation *collapseAnimation;
 };
 
 #endif // SIDEPANEL_H
+
+
