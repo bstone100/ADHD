@@ -12,6 +12,8 @@ AudioLevel::AudioLevel(QWidget *parent) : QWidget(parent)
 //    setMaximumHeight(50);
     setFixedSize(30,30);
 
+    audioRecorder = NULL;
+
     fillColor = QColorConstants::Svg::purple;
 
     timer.setInterval(25);
@@ -30,8 +32,12 @@ void AudioLevel::paintEvent(QPaintEvent *event)
 {
     Q_UNUSED(event);
 
-    QPainter painter(this);
+    audioRecorder ? paintMic() : paintMascot();
+}
 
+void AudioLevel::paintMic()
+{
+    QPainter painter(this);
 
     if (!isRecording()) {
         painter.fillRect(rect(), Qt::transparent);
@@ -46,7 +52,7 @@ void AudioLevel::paintEvent(QPaintEvent *event)
     qreal bottomRightX = (315.6/512) * width();
     qreal bottomRightY = (289.3/512) * height();
 
-//    qreal micWidth = bottomRightX - topLeftX;
+    //    qreal micWidth = bottomRightX - topLeftX;
     qreal micHeight = bottomRightY - topLeftY;
     qreal levelHeight = m_level * micHeight;
 
@@ -76,6 +82,31 @@ void AudioLevel::paintEvent(QPaintEvent *event)
 
     painter.setOpacity(1.0);
     painter.fillRect(levelRect, fillColor);
+}
+
+void AudioLevel::paintMascot()
+{
+    QPainter painter(this);
+    painter.setRenderHint(QPainter::Antialiasing);
+
+    qreal topLeftX = (50.0/512) * width();
+    qreal topLeftY = (93.0/512) * height();
+
+    qreal topRightX = (462.0/512) * width();
+//    qreal topRightY = (93/512) * height();
+
+    qreal radius = (topRightX - topLeftX) / 2;
+
+    qreal centerX = topLeftX + radius;
+    qreal centerY = topLeftY + radius;
+
+    qreal levelRadius = qBound(10.0, radius - 1 + (m_level * 3), (qreal)width() - 10);
+
+    painter.setBrush(fillColor);
+    painter.setPen(Qt::NoPen);
+
+    // Draw the circle
+    painter.drawEllipse(QPointF(centerX, centerY), levelRadius, levelRadius);
 }
 
 void AudioLevel::updateOpacity()
@@ -113,7 +144,7 @@ bool AudioLevel::isRecording()
     if (audioRecorder) {
         return audioRecorder->currentlyRecording();
     }
-    return false;
+    return true;
 }
 
 void AudioLevel::start()

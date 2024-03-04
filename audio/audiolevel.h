@@ -32,6 +32,9 @@ protected:
     void paintEvent(QPaintEvent *event) override;
 
 private:
+    void paintMic();
+    void paintMascot();
+
     qreal m_level = 0.0;
 
     QColor fillColor;

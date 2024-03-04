@@ -9,5 +9,6 @@
         <file>images/today.svg</file>
         <file>images/leftArrow.svg</file>
         <file>images/rightArrow.svg</file>
+        <file>images/panda.svg</file>
     </qresource>
 </RCC>

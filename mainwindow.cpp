@@ -21,6 +21,8 @@
 #include "QButtonGroup"
 #include "audio/audiolevel.h"
 #include "QGestureEvent"
+#include "widgets/chattextedit.h"
+#include "audio/audiolevelcalculator.h"
 
 MainWindow *MainWindow::singleton = NULL;
 QString MainWindow::currentPath;
@@ -102,6 +104,23 @@ MainWindow::MainWindow(QWidget *parent)
     voiceSelectionComboBox->setStyleSheet("combobox-popup: 0;");
     themeComboBox->setStyleSheet("combobox-popup: 0;");
 #endif
+
+    assistantTextEdit = new ChatTextEdit(this);
+    assistantTextEdit->setPlainText("Hello! How can I assist you today?");
+    assistantTextEdit->setAcceptRichText(false);
+    assistantTextEdit->setReadOnly(true);
+    assistantTextEdit->setAlignment(Qt::AlignCenter);
+    assistantTextEdit->setMinHeight(50);
+    assistantTextEdit->setMaxHeight(200);
+
+    assistantLevelWidget = new AudioLevel(this);
+
+
+    SvgButton *pandaButton = new SvgButton(assistantLevelWidget);
+    assistantLevelWidget->setFixedSize(60,60);
+    pandaButton->setSvgPath(":/images/panda.svg");
+    pandaButton->setIconSize(QSize(60,60));
+    pandaButton->setUsingAppColors(true);
 
 
     // Create the text input field
@@ -233,16 +252,21 @@ MainWindow::MainWindow(QWidget *parent)
     topRowLayout->setContentsMargins(0,0,0,0);
 
     // Second row layout for text input and send chat button
-    QHBoxLayout *secondRowLayout = new QHBoxLayout();
-    secondRowLayout->setSpacing(5);
-    secondRowLayout->addWidget(textInputField);
-    secondRowLayout->addWidget(audioRecorder->getLevelWidget());
-    secondRowLayout->addWidget(sendChatButton);
+    QHBoxLayout *userInputLayout = new QHBoxLayout();
+    userInputLayout->setSpacing(5);
+    userInputLayout->addWidget(textInputField);
+    userInputLayout->addWidget(audioRecorder->getLevelWidget());
+    userInputLayout->addWidget(sendChatButton);
+
+    QHBoxLayout *assistantLayout = new QHBoxLayout();
+    assistantLayout->addWidget(assistantTextEdit);
+    assistantLayout->addWidget(assistantLevelWidget);
 
     // Adding layouts and widgets to the main layout
     layout->addLayout(topRowLayout);
+    layout->addLayout(assistantLayout);
     layout->addWidget(calendarWidget, 1); // Calendar takes most of the space
-    layout->addLayout(secondRowLayout);
+    layout->addLayout(userInputLayout);
 
     auto margins = layout->contentsMargins();
     margins.setTop(0);
@@ -278,6 +302,8 @@ void MainWindow::sendChat()
 {
     if (textInputField->text() == "") return;
 
+    setAssistantWidgetText("Thinking...");
+
 #if defined(Q_OS_IOS)
 //    generateHapticFeedback();
 #endif
@@ -294,6 +320,32 @@ void MainWindow::transcribe()
 {
     whisperRequest->setFilePath(audioRecorder->getRecordingLocation());
     whisperRequest->execute();
+}
+
+void MainWindow::setAssistantWidgetText(const QString &text)
+{
+    assistantTextEdit->setPlainText(text);
+    assistantTextEdit->setAlignment(Qt::AlignCenter);
+}
+
+void MainWindow::playAssistantLevel(const QVector<float> &levels, int duration)
+{
+    QTimer *timer = new QTimer(this);
+    timer->setInterval((float)duration / (float)levels.size());
+
+    static int index = 0;
+    connect(timer, &QTimer::timeout, this, [=]{
+        if (index < levels.size()) {
+            assistantLevelWidget->setLevel(levels.at(index));
+            index++;
+        } else {
+            timer->stop();
+            index = 0;
+            timer->deleteLater();
+        }
+    });
+
+    timer->start();
 }
 
 void MainWindow::closeEvent(QCloseEvent *event)
@@ -364,14 +416,19 @@ void MainWindow::setDarkMode(bool isDarkMode)
         qApp->processEvents();
     }
 
-//    0xF2E9FF (light) 0x3D315B (dark)
+    static QColor light(0xF2E9FF);
+    static QColor lightMid(0xAA9FBD);
+    static QColor darkMid(0x61567C);
+    static QColor dark(0x3D315B);
 
     if (isDarkMode) {
-        SvgButton::setAppColors(0xF2E9FF, Qt::lightGray, 0xF2E9FF, Qt::lightGray);
-        audioRecorder->getLevelWidget()->setFillColor(0xF2E9FF);
+        SvgButton::setAppColors(light, Qt::lightGray, light, Qt::lightGray);
+        audioRecorder->getLevelWidget()->setFillColor(light);
+        assistantLevelWidget->setFillColor(darkMid);
     } else {
-        SvgButton::setAppColors(0x3D315B, Qt::lightGray, 0x3D315B, Qt::lightGray);
-        audioRecorder->getLevelWidget()->setFillColor(0x3D315B);
+        SvgButton::setAppColors(dark, Qt::lightGray, dark, Qt::lightGray);
+        audioRecorder->getLevelWidget()->setFillColor(dark);
+        assistantLevelWidget->setFillColor(lightMid);
     }
 }
 

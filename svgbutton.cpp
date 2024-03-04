@@ -246,14 +246,22 @@ void SvgButton::updateColor()
 QString SvgButton::modifySvgColor(const QString &svgContent, const QColor &color) {
     QString modifiedSvgContent = svgContent;
 
-    // Regex to match fill attributes with various color values
-    static QRegularExpression fillRegex("fill\\s*=\\s*\"(#[0-9a-fA-F]{3,6})\"");
-    static QRegularExpression strokeRegex("stroke\\s*=\\s*\"(#[0-9a-fA-F]{3,6})\"");
+    // Regex to match fill and stroke attributes with various color values
+    static QRegularExpression fillStrokeAttrRegex("(fill|stroke)\\s*=\\s*\"(#[0-9a-fA-F]{3,6})\"");
 
-    QString replacementColor = color.name(QColor::HexRgb);
+    // Regex to match CSS styles for fill and stroke
+    static QRegularExpression cssFillStyleRegex("(\\.st\\d+\\{[^}]*fill:)#[0-9a-fA-F]{3,6}([^}]*\\})");
+    static QRegularExpression cssStrokeStyleRegex("(\\.st\\d+\\{[^}]*stroke:)#[0-9a-fA-F]{3,6}([^}]*\\})");
 
-    modifiedSvgContent.replace(fillRegex, QString("fill=\"%1\"").arg(replacementColor));
-    modifiedSvgContent.replace(strokeRegex, QString("stroke=\"%1\"").arg(replacementColor));
+    QString replacementFillColor = color.name(QColor::HexRgb);
+    QString replacementStrokeColor = color.name(QColor::HexRgb); // Use the same color for stroke, or adjust as needed
+
+    // Replace inline fill and stroke attributes
+    modifiedSvgContent.replace(fillStrokeAttrRegex, QString("\\1=\"%2\"").arg(replacementFillColor));
+
+    // Replace fill and stroke within CSS styles
+    modifiedSvgContent.replace(cssFillStyleRegex, QString("\\1%1\\2").arg(replacementFillColor));
+    modifiedSvgContent.replace(cssStrokeStyleRegex, QString("\\1%1\\2").arg(replacementStrokeColor));
 
     return modifiedSvgContent;
 }

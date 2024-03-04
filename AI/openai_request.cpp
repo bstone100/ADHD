@@ -16,6 +16,7 @@
 #include "../api.h"
 #include "qdir.h"
 #include "../mainwindow.h"
+#include "../audio/audiolevelcalculator.h"
 
 OpenAIRequest::OpenAIRequest(QObject *parent)
     : QObject(parent)
@@ -196,6 +197,8 @@ void OpenAIRequest::sendChatCompletionsRequest()
 
             API::processToolCalls(tool_calls, this);
 
+            MainWindow::self()->setAssistantWidgetText(tool_calls.isEmpty() ? content : "Completing tasks...");
+
             emit requestFinished(content);
         } else {
             emit requestError(reply->errorString() + reply->readAll());
@@ -371,10 +374,24 @@ void OpenAIRequest::playAudio(const QByteArray &audioData)
     QMediaPlayer *mediaPlayer = new QMediaPlayer(this);
     QAudioOutput *audioOutput = new QAudioOutput(this);
 
+    audioOutput->setVolume(100);
     mediaPlayer->setAudioOutput(audioOutput);
     mediaPlayer->setSource(QUrl::fromLocalFile(m_filePath));
-    audioOutput->setVolume(100);
-    mediaPlayer->play();
+
+    AudioLevelCalculator *calculator = new AudioLevelCalculator(this);
+    connect(calculator, &AudioLevelCalculator::levelsCalculated, this, [=](const QVector<float> &levels){
+        MainWindow::self()->playAssistantLevel(levels, mediaPlayer->duration());
+        mediaPlayer->play();
+    });
+
+    connect(mediaPlayer, &QMediaPlayer::playbackStateChanged, this, [=]{
+        if (mediaPlayer->playbackState() == QMediaPlayer::StoppedState) {
+            mediaPlayer->deleteLater();
+            calculator->deleteLater();
+        }
+    });
+
+    calculator->calculateLevels(m_filePath);
 }
 
 

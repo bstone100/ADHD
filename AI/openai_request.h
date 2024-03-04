@@ -5,6 +5,8 @@
 #include "openai_message.h"
 
 
+class AudioLevelCalculator;
+
 class OpenAIRequest : public QObject
 {
     Q_OBJECT
@@ -112,6 +114,7 @@ private:
     void sendAudioSpeechRequest();
 
     void playAudio(const QByteArray &audioData);
+    AudioLevelCalculator *levelCalculator;
 };
 
 

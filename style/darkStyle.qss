@@ -1,10 +1,13 @@
 /* QWidget (Dark Mode) */
+
 QWidget {
-    background-color: #3D315B; /* Dark background color */
-    color: #F2E9FF;
-    font-family: SF Pro Rounded;
     font-size: 14px;
     font-weight: 600;
+    color: #F2E9FF;
+}
+
+QMainWindow {
+    background-color: #3D315B;
 }
 
 /* QPushButton (Dark Mode) */
@@ -54,10 +57,17 @@ QLineEdit {
     padding: 4px 8px;
 }
 
+QTextEdit {
+    background-color: transparent;
+    border: none;
+    font-size: 22px;
+}
+
 QMenu {
     background-color: #3D315B; /* Dark background color */
     border: 1px solid #7A71E7; /* Border color */
     border-radius: 5px; /* Rounded corners */
+    color: #F2E9FF;
 }
 
 QMenu::item {

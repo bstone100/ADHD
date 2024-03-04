@@ -46,6 +46,8 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         ${app_icon}
         sidepanel.h sidepanel.cpp
         svgbutton.h svgbutton.cpp
+        widgets/chattextedit.h widgets/chattextedit.cpp
+        audio/audiolevelcalculator.h audio/audiolevelcalculator.cpp
     )
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET ADHD APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR

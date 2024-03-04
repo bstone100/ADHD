@@ -10,11 +10,14 @@
 #include <QSettings>
 #include <QRadioButton>
 #include <QTouchEvent>
+#include "QTextEdit"
 
 class OpenAIRequest;
 class AudioRecorder;
 class CalendarWidget;
 class SvgButton;
+class ChatTextEdit;
+class AudioLevel;
 
 class MainWindow : public QMainWindow
 {
@@ -29,6 +32,8 @@ public:
     void say(const QString &text);
     void sendChat();
     void transcribe();
+    void setAssistantWidgetText(const QString &text);
+    void playAssistantLevel(const QVector<float> &levels, int duration);
 
     void saveSettings();
     void loadSettings();
@@ -74,9 +79,12 @@ private:
 
     SvgButton *sendChatButton;
     QLineEdit *textInputField;
+    ChatTextEdit *assistantTextEdit;
 
     SvgButton *recordAudioButton;
     AudioRecorder *audioRecorder;
+
+    AudioLevel *assistantLevelWidget;
 
     OpenAIRequest *chatRequest;
     OpenAIRequest *speechRequest;

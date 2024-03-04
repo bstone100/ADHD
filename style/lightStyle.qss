@@ -1,10 +1,12 @@
 /* QWidget (Light Mode) */
 QWidget {
-    background-color: #F2E9FF; /* Light background color */
-    color: #3D315B;
-    font-family: SF Pro Rounded;
     font-size: 14px;
     font-weight: 600;
+    color: #3D315B;
+}
+
+QMainWindow {
+    background-color: #F2E9FF;
 }
 
 /* QPushButton (Light Mode) */
@@ -52,6 +54,12 @@ QLineEdit {
     border: 2px solid #3D315B; /* Border color */
     border-radius: 20px;
     padding: 4px 8px;
+}
+
+QTextEdit {
+    background-color: transparent;
+    border: none;
+    font-size: 22px;
 }
 
 QMenu {
