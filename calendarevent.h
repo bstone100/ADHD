@@ -1,5 +1,5 @@
-#ifndef EVENT_H
-#define EVENT_H
+#ifndef CALENDAREVENT_H
+#define CALENDAREVENT_H
 
 #include <QString>
 #include <QTime>
@@ -16,27 +16,27 @@ enum Category {
 QString categoryToString(Category category);
 Category stringToCategory(const QString &categoryString);
 
-struct Event {
+struct CalendarEvent {
     QString id;
     QDate date;
     QTime time;
     QString description;
     Category category;
 
-    Event();
+    CalendarEvent();
 
     QJsonObject toJson() const;
-    static Event fromJson(const QJsonObject &obj);
+    static CalendarEvent fromJson(const QJsonObject &obj);
 
     bool isValid() const {
         return date.isValid() && time.isValid();
     }
 
-    bool operator==(const Event &other) const {
+    bool operator==(const CalendarEvent &other) const {
         return this->id == other.id;
     }
 
-    bool operator<(const Event& other) const {
+    bool operator<(const CalendarEvent& other) const {
         if (this->date < other.date) {
             return true;
         } else if (this->date > other.date) {
@@ -48,4 +48,4 @@ struct Event {
     }
 };
 
-#endif // EVENT_H
+#endif // CALENDAREVENT_H

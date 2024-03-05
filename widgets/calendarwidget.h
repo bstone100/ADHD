@@ -6,7 +6,8 @@
 #include <QMap>
 #include <QPainter>
 #include "QtWidgets/qtableview.h"
-#include "event.h"
+
+class CalendarEvent;
 
 class CalendarWidget : public QCalendarWidget {
     Q_OBJECT
@@ -14,8 +15,8 @@ class CalendarWidget : public QCalendarWidget {
 public:
     explicit CalendarWidget(QWidget *parent = nullptr);
 
-    void addEvent(const Event &event);
-    void removeEvent(const Event &event);
+    void addEvent(const CalendarEvent &event);
+    void removeEvent(const CalendarEvent &event);
 
     QJsonObject getJsonObject();
     void loadJsonObject(const QJsonObject &jObj);
@@ -29,7 +30,7 @@ protected:
     void paintCell(QPainter *painter, const QRect &rect, QDate date) const override;
 
 private:
-    QMap<QDate, QList<Event>> events;
+    QMap<QDate, QList<CalendarEvent>> events;
 
     QTableView *tableView;
 };

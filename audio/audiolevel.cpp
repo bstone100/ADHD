@@ -8,8 +8,6 @@
 
 AudioLevel::AudioLevel(QWidget *parent) : QWidget(parent)
 {
-//    setMinimumHeight(15);
-//    setMaximumHeight(50);
     setFixedSize(30,30);
 
     audioRecorder = NULL;

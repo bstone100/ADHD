@@ -2,7 +2,6 @@
     <qresource prefix="/">
         <file>style/lightStyle.qss</file>
         <file>style/darkStyle.qss</file>
-        <file>exampleConversation.json</file>
         <file>images/microphone.svg</file>
         <file>images/drawer.svg</file>
         <file>images/send.svg</file>
@@ -10,5 +9,6 @@
         <file>images/leftArrow.svg</file>
         <file>images/rightArrow.svg</file>
         <file>images/panda.svg</file>
+        <file>AI/exampleConversation.json</file>
     </qresource>
 </RCC>

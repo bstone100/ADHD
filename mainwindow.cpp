@@ -9,20 +9,22 @@
 #include "QtCore/qjsondocument.h"
 #include "audio/audiorecorder.h"
 #include "QTimer"
-#include "calendarwidget.h"
+#include "widgets/calendarwidget.h"
 #include "QJsonObject"
-#include "qstandardpaths.h"
-#include "sidepanel.h"
+#include "widgets/sidepanel.h"
 #include "QSvgRenderer"
-#include "svgbutton.h"
-#include "iOS/hapticfeedback.h"
-#include "iOS/DarkModeDetector.h"
-#include "macOS/MacThemeDetector.h"
+#include "widgets/svgbutton.h"
 #include "QButtonGroup"
 #include "audio/audiolevel.h"
-#include "QGestureEvent"
 #include "widgets/chattextedit.h"
-#include "audio/audiolevelcalculator.h"
+
+#if defined(Q_OS_IOS)
+#include "qstandardpaths.h"
+#include "iOS/hapticfeedback.h"
+#include "iOS/DarkModeDetector.h"
+#elif defined(Q_OS_MACOS)
+#include "macOS/MacThemeDetector.h"
+#endif
 
 MainWindow *MainWindow::singleton = NULL;
 QString MainWindow::currentPath;
@@ -45,11 +47,8 @@ MainWindow::MainWindow(QWidget *parent)
 // Preprocessor directives to check the platform
 #if defined(Q_OS_IOS)
     currentPath = QStandardPaths::standardLocations(QStandardPaths::AppDataLocation).value(0);
-#elif defined(Q_OS_MACOS) || defined(Q_OS_WIN)
-    currentPath = QCoreApplication::applicationDirPath();
 #else
-    // Default to AppDataLocation for other platforms
-    currentPath = QStandardPaths::standardLocations(QStandardPaths::AppDataLocation).value(0);
+    currentPath = QCoreApplication::applicationDirPath();
 #endif
 
     QDir dir(currentPath);

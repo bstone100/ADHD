@@ -13,7 +13,7 @@
 #include "QtMultimedia/qaudiooutput.h"
 #include "QtMultimedia/qmediaplayer.h"
 #include "openai_request.h"
-#include "../api.h"
+#include "api.h"
 #include "qdir.h"
 #include "../mainwindow.h"
 #include "../audio/audiolevelcalculator.h"

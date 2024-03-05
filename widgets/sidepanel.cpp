@@ -1,10 +1,14 @@
 #include "SidePanel.h"
-#include "mainwindow.h"
+#include "../mainwindow.h"
 #include <QPushButton>
 #include <QVBoxLayout>
 #include <QPropertyAnimation>
 #include "QEvent"
+
+#if defined(Q_OS_IOS)
 #include "iOS/hapticfeedback.h"
+#endif
+
 
 SidePanel *SidePanel::singleton = NULL;
 

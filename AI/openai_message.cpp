@@ -1,7 +1,7 @@
 #include "openai_message.h"
 #include "QtCore/qjsondocument.h"
 #include "../mainwindow.h"
-#include "../calendarwidget.h"
+#include "../widgets/calendarwidget.h"
 
 OpenAIMessage::OpenAIMessage(QObject *parent):
     QObject(parent)

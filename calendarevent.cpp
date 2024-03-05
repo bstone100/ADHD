@@ -1,4 +1,4 @@
-#include "event.h"
+#include "calendarevent.h"
 
 QString categoryToString(Category category) {
     switch (category) {
@@ -16,10 +16,10 @@ Category stringToCategory(const QString &categoryString) {
     return Task; // Default case, or throw an exception as per your error handling policy
 }
 
-Event::Event() : id(QString::number(QUuid::createUuid().data1)), category(Task) {
+CalendarEvent::CalendarEvent() : id(QString::number(QUuid::createUuid().data1)), category(Task) {
 }
 
-QJsonObject Event::toJson() const {
+QJsonObject CalendarEvent::toJson() const {
     return QJsonObject{
         {"id", id},
         {"date", date.toString("yyyy-MM-dd ddd")},
@@ -29,8 +29,8 @@ QJsonObject Event::toJson() const {
     };
 }
 
-Event Event::fromJson(const QJsonObject &obj) {
-    Event e;
+CalendarEvent CalendarEvent::fromJson(const QJsonObject &obj) {
+    CalendarEvent e;
     e.id = obj["id"].toString();
     e.date = QDate::fromString(obj["date"].toString(), "yyyy-MM-dd ddd");
     e.time = QTime::fromString(obj["time"].toString(), "HH:mm");

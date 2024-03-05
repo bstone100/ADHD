@@ -4,10 +4,9 @@
 #include "QJsonObject"
 #include "QSettings"
 #include "QJsonDocument"
-#include "eventmanager.h"
-#include "qapplication.h"
+#include "../calendareventmanager.h"
 #include "qmenu.h"
-#include "mainwindow.h"
+#include "../mainwindow.h"
 #include "QHeaderView"
 #include "QToolButton"
 #include "svgbutton.h"
@@ -73,13 +72,13 @@ CalendarWidget::CalendarWidget(QWidget *parent) : QCalendarWidget(parent) {
     connect(this, &CalendarWidget::customContextMenuRequested, this, &CalendarWidget::handleContextMenuRequested);
 }
 
-void CalendarWidget::addEvent(const Event &event) {
+void CalendarWidget::addEvent(const CalendarEvent &event) {
     events[event.date].append(event);
     updateCell(event.date);
     MainWindow::self()->saveSettings();
 }
 
-void CalendarWidget::removeEvent(const Event &event)
+void CalendarWidget::removeEvent(const CalendarEvent &event)
 {
     auto eventList = events.value(event.date);
     int index = eventList.indexOf(event);
@@ -110,15 +109,15 @@ QJsonObject CalendarWidget::getJsonObject()
 void CalendarWidget::loadJsonObject(const QJsonObject &jObj)
 {
     events.clear();
-    EventManager::self()->clearEvents();
+    CalendarEventManager::self()->clearEvents();
 
     QJsonArray eventArray = jObj["eventArray"].toArray();
 
     for (int i = 0; i < eventArray.size(); i++) {
         QJsonObject eventObject = eventArray.at(i).toObject();
-        Event event = Event::fromJson(eventObject);
+        CalendarEvent event = CalendarEvent::fromJson(eventObject);
         if (!event.isValid()) continue;
-        EventManager::self()->addEvent(event);
+        CalendarEventManager::self()->addEvent(event);
         events[event.date].append(event);
     }
 
@@ -146,8 +145,8 @@ void CalendarWidget::paintCell(QPainter *painter, const QRect &rect, QDate date)
 
     if (events.contains(date)) {
         // Sort the events for the day by time if not already sorted
-        QList<Event> dayEvents = events.value(date);
-        std::sort(dayEvents.begin(), dayEvents.end(), [](const Event &a, const Event &b) -> bool {
+        QList<CalendarEvent> dayEvents = events.value(date);
+        std::sort(dayEvents.begin(), dayEvents.end(), [](const CalendarEvent &a, const CalendarEvent &b) -> bool {
             return a.time < b.time;
         });
 
@@ -159,7 +158,7 @@ void CalendarWidget::paintCell(QPainter *painter, const QRect &rect, QDate date)
         font.setPointSize(6); // Smaller font size for event text
         painter->setFont(font);
 
-        for (const Event &event : dayEvents) {
+        for (const CalendarEvent &event : dayEvents) {
             QRect eventRect = QRect(rect.left() + 2, rect.top() + 2 + yOffset, rect.width() - 4, eventHeight);
             painter->save();
 
@@ -208,7 +207,7 @@ void CalendarWidget::handleContextMenuRequested(const QPoint &pos) {
     QAction action("Remove all events");
     connect(&action, &QAction::triggered, this, [=]{
         events.clear();
-        EventManager::self()->clearEvents();
+        CalendarEventManager::self()->clearEvents();
         updateCells();
     });
     menu.addAction(&action);

@@ -38,14 +38,14 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         resources.qrc
         AI/openai_request.h AI/openai_request.cpp AI/openai_message.h AI/openai_message.cpp
         audio/audiorecorder.cpp audio/audiorecorder.h audio/audiolevel.h audio/audiolevel.cpp
-        event.h
-        calendarwidget.h calendarwidget.cpp
-        api.h api.cpp
-        eventmanager.h eventmanager.cpp
-        event.cpp
+        calendarevent.h
+        widgets/calendarwidget.h widgets/calendarwidget.cpp
+        AI/api.h AI/api.cpp
+        calendareventmanager.h calendareventmanager.cpp
+        calendarevent.cpp
         ${app_icon}
-        sidepanel.h sidepanel.cpp
-        svgbutton.h svgbutton.cpp
+        widgets/sidepanel.h widgets/sidepanel.cpp
+        widgets/svgbutton.h widgets/svgbutton.cpp
         widgets/chattextedit.h widgets/chattextedit.cpp
         audio/audiolevelcalculator.h audio/audiolevelcalculator.cpp
     )
@@ -118,8 +118,8 @@ set_target_properties(ADHD PROPERTIES
     ${BUNDLE_ID_OPTION}
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
-    MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/Info.plist.in
-    QT_IOS_LAUNCH_SCREEN "${CMAKE_CURRENT_SOURCE_DIR}/LaunchScreen.storyboard"
+    MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/macOS/Info.plist.in
+    QT_IOS_LAUNCH_SCREEN "${CMAKE_CURRENT_SOURCE_DIR}/iOS/LaunchScreen.storyboard"
     MACOSX_BUNDLE TRUE
     WIN32_EXECUTABLE TRUE
 )

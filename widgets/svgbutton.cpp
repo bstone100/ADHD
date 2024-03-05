@@ -3,7 +3,10 @@
 #include <QMouseEvent>
 #include "QRegularExpression"
 #include "QFile"
+
+#if defined(Q_OS_IOS)
 #include "iOS/hapticfeedback.h"
+#endif
 
 QColor SvgButton::s_defaultColor(Qt::black);
 QColor SvgButton::s_disabledColor(Qt::black);

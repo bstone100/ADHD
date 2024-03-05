@@ -1,14 +1,14 @@
 #include "api.h"
-#include "AI/openai_message.h"
-#include "AI/openai_request.h"
+#include "openai_message.h"
+#include "openai_request.h"
 #include "QDate"
 #include "QJsonObject"
 #include "QtCore/qjsonarray.h"
 #include "QtCore/qjsondocument.h"
-#include "calendarwidget.h"
-#include "event.h"
-#include "mainwindow.h"
-#include "eventmanager.h"
+#include "../widgets/calendarwidget.h"
+#include "../calendarevent.h"
+#include "../mainwindow.h"
+#include "../calendareventmanager.h"
 
 QList<APITool> API::toolList = {};
 
@@ -151,7 +151,7 @@ QString API::addEvent(const QJsonObject &jsonObject)
     QString categoryString = jsonObject.value("category").toString();
     Category category = stringToCategory(categoryString);
 
-    Event event;
+    CalendarEvent event;
     event.date = date;
     event.time = time;
     event.description = description;
@@ -161,7 +161,7 @@ QString API::addEvent(const QJsonObject &jsonObject)
         return "Invalid event date or time.";
     }
 
-    EventManager::self()->addEvent(event);
+    CalendarEventManager::self()->addEvent(event);
     MainWindow::self()->getCalendarWidget()->addEvent(event);
 
     return "Added event.";
@@ -171,16 +171,16 @@ QString API::removeEvent(const QJsonObject &jsonObject)
 {
     QString id = jsonObject["id"].toString();
 
-    if (!EventManager::self()->containsEvent(id)) {
-        return "Event not found.";
+    if (!CalendarEventManager::self()->containsEvent(id)) {
+        return "CalendarEvent not found.";
     }
 
-    Event event = EventManager::self()->getEvent(id);
+    CalendarEvent event = CalendarEventManager::self()->getEvent(id);
 
-    EventManager::self()->removeEvent(id);
+    CalendarEventManager::self()->removeEvent(id);
     MainWindow::self()->getCalendarWidget()->removeEvent(event);
 
-    return "Event removed";
+    return "CalendarEvent removed";
 }
 
 
