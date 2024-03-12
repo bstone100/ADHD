@@ -17,6 +17,10 @@
 #include "QButtonGroup"
 #include "audio/audiolevel.h"
 #include "widgets/chattextedit.h"
+#include "widgets/eventlistwidget.h"
+#include "calendareventmanager.h"
+#include "QGraphicsOpacityEffect"
+#include "QParallelAnimationGroup"
 
 #if defined(Q_OS_IOS)
 #include "qstandardpaths.h"
@@ -28,6 +32,11 @@
 
 MainWindow *MainWindow::singleton = NULL;
 QString MainWindow::currentPath;
+
+QColor MainWindow::lightColor = 0xF2E9FF;
+QColor MainWindow::lightMidColor = 0xAA9FBD;
+QColor MainWindow::darkMidColor = 0x61567C;
+QColor MainWindow::darkColor = 0x3D315B;
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -108,8 +117,8 @@ MainWindow::MainWindow(QWidget *parent)
     assistantTextEdit->setPlainText("Hello! How can I assist you today?");
     assistantTextEdit->setAcceptRichText(false);
     assistantTextEdit->setReadOnly(true);
-    assistantTextEdit->setAlignment(Qt::AlignCenter);
-    assistantTextEdit->setMinHeight(50);
+    assistantTextEdit->setTextInteractionFlags(Qt::NoTextInteraction);
+    assistantTextEdit->setMinHeight(60);
     assistantTextEdit->setMaxHeight(200);
 
     assistantLevelWidget = new AudioLevel(this);
@@ -204,9 +213,16 @@ MainWindow::MainWindow(QWidget *parent)
     sendChatButton->setEnabled(false);
     connect(sendChatButton, &QPushButton::clicked, this, &MainWindow::sendChat);
 
-    // Calendar widget
-    calendarWidget = new CalendarWidget(this);
-    calendarWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+    stackedWidget = new QStackedWidget(this);
+    calendarWidget = new CalendarWidget(stackedWidget);
+    eventListWidget = new EventListWidget(stackedWidget);
+
+    stackedWidget->addWidget(calendarWidget); // Index 0
+    stackedWidget->addWidget(eventListWidget); // Index 1
+
+    connect(calendarWidget, &QCalendarWidget::clicked, this, &MainWindow::expandEventList);
+    connect(eventListWidget, &EventListWidget::backButtonClicked, this, &MainWindow::collapseEventList);
 
 
     // today button
@@ -258,13 +274,14 @@ MainWindow::MainWindow(QWidget *parent)
     userInputLayout->addWidget(sendChatButton);
 
     QHBoxLayout *assistantLayout = new QHBoxLayout();
+    assistantLayout->setContentsMargins(30,0,30,0);
     assistantLayout->addWidget(assistantTextEdit);
     assistantLayout->addWidget(assistantLevelWidget);
 
     // Adding layouts and widgets to the main layout
     layout->addLayout(topRowLayout);
     layout->addLayout(assistantLayout);
-    layout->addWidget(calendarWidget, 1); // Calendar takes most of the space
+    layout->addWidget(stackedWidget, 1);
     layout->addLayout(userInputLayout);
 
     auto margins = layout->contentsMargins();
@@ -324,13 +341,12 @@ void MainWindow::transcribe()
 void MainWindow::setAssistantWidgetText(const QString &text)
 {
     assistantTextEdit->setPlainText(text);
-    assistantTextEdit->setAlignment(Qt::AlignCenter);
 }
 
 void MainWindow::playAssistantLevel(const QVector<float> &levels, int duration)
 {
     QTimer *timer = new QTimer(this);
-    timer->setInterval((float)duration / (float)levels.size());
+    timer->setInterval(round((float)duration / (float)levels.size()));
 
     static int index = 0;
     connect(timer, &QTimer::timeout, this, [=]{
@@ -403,6 +419,12 @@ void MainWindow::handleThemeChange(bool isDarkMode)
     setDarkMode(isDarkMode);
 }
 
+void MainWindow::updateEventViews()
+{
+    calendarWidget->updateCells();
+    eventListWidget->updateEvents();
+}
+
 void MainWindow::setDarkMode(bool isDarkMode)
 {
     QString path = isDarkMode ? ":/style/darkStyle.qss" : ":/style/lightStyle.qss";
@@ -415,19 +437,14 @@ void MainWindow::setDarkMode(bool isDarkMode)
         qApp->processEvents();
     }
 
-    static QColor light(0xF2E9FF);
-    static QColor lightMid(0xAA9FBD);
-    static QColor darkMid(0x61567C);
-    static QColor dark(0x3D315B);
-
     if (isDarkMode) {
-        SvgButton::setAppColors(light, Qt::lightGray, light, Qt::lightGray);
-        audioRecorder->getLevelWidget()->setFillColor(light);
-        assistantLevelWidget->setFillColor(darkMid);
+        SvgButton::setAppColors(lightColor, darkMidColor, lightColor, darkMidColor);
+        audioRecorder->getLevelWidget()->setFillColor(lightColor);
+        assistantLevelWidget->setFillColor(darkMidColor);
     } else {
-        SvgButton::setAppColors(dark, Qt::lightGray, dark, Qt::lightGray);
-        audioRecorder->getLevelWidget()->setFillColor(dark);
-        assistantLevelWidget->setFillColor(lightMid);
+        SvgButton::setAppColors(darkColor, lightMidColor, darkColor, lightMidColor);
+        audioRecorder->getLevelWidget()->setFillColor(darkColor);
+        assistantLevelWidget->setFillColor(lightMidColor);
     }
 }
 
@@ -445,7 +462,7 @@ void MainWindow::saveSettings()
 
     // this will be slow with many events
     // TODO: maintain list of changed dates
-    calendarWidget->saveSettings();
+    CalendarEventManager::self()->saveSettings();
 }
 
 void MainWindow::loadSettings()
@@ -471,7 +488,7 @@ void MainWindow::loadSettings()
         setDarkMode(isDarkMode);
     }
 
-    calendarWidget->loadSettings();
+    CalendarEventManager::self()->loadSettings();
 
     restoreGeometry(settings->value("mainWindow/geometry").toByteArray());
     restoreState(settings->value("mainWindow/windowState").toByteArray());
@@ -570,6 +587,96 @@ void MainWindow::resizeEvent(QResizeEvent *event)
 
     return QMainWindow::resizeEvent(event);
 }
+
+void MainWindow::expandEventList(QDate date) {
+    eventListWidget->setDate(date);
+
+    static const int duration = 250;
+
+    QPropertyAnimation *sizeAnimation = new QPropertyAnimation(eventListWidget, "geometry");
+    sizeAnimation->setDuration(duration);
+
+    QGraphicsOpacityEffect *opacityEffect = new QGraphicsOpacityEffect(eventListWidget);
+    eventListWidget->setGraphicsEffect(opacityEffect);
+    QPropertyAnimation *fadeAnimation = new QPropertyAnimation(opacityEffect, "opacity");
+    fadeAnimation->setDuration(duration);
+    fadeAnimation->setStartValue(0.0);
+    fadeAnimation->setEndValue(1.0);
+
+    QPoint pos = stackedWidget->mapFromGlobal(calendarWidget->globalPointForDate(date));
+    QRect startRect(pos, calendarWidget->cellSize());
+    QRect endRect = calendarWidget->geometry();
+
+    sizeAnimation->setStartValue(startRect);
+    sizeAnimation->setEndValue(endRect);
+
+    eventListWidget->getScrollArea()->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    eventListWidget->getScrollArea()->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+
+    connect(sizeAnimation, &QPropertyAnimation::finished, this, [=]{
+        eventListWidget->getScrollArea()->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+        eventListWidget->getScrollArea()->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    });
+
+    stackedWidget->setCurrentWidget(eventListWidget);
+
+    QParallelAnimationGroup *group = new QParallelAnimationGroup();
+    group->addAnimation(fadeAnimation);
+    group->addAnimation(sizeAnimation);
+
+    group->start(QPropertyAnimation::DeleteWhenStopped);
+}
+
+void MainWindow::collapseEventList() {
+    static const int duration = 250;
+
+    QPropertyAnimation *sizeAnimation = new QPropertyAnimation(eventListWidget, "geometry");
+    sizeAnimation->setDuration(duration);
+
+    QGraphicsOpacityEffect *opacityEffect = new QGraphicsOpacityEffect(eventListWidget);
+    eventListWidget->setGraphicsEffect(opacityEffect);
+    QPropertyAnimation *fadeAnimation = new QPropertyAnimation(opacityEffect, "opacity");
+    fadeAnimation->setDuration(duration);
+    fadeAnimation->setStartValue(1.0);
+    fadeAnimation->setEndValue(0.0);
+
+
+    QPoint pos = stackedWidget->mapFromGlobal(calendarWidget->globalPointForDate(eventListWidget->getCurrentDate()));
+    QRect startRect = eventListWidget->geometry();
+    QRect endRect(pos, calendarWidget->cellSize());
+
+    sizeAnimation->setStartValue(startRect);
+    sizeAnimation->setEndValue(endRect);
+
+    eventListWidget->getScrollArea()->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    eventListWidget->getScrollArea()->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+
+    connect(sizeAnimation, &QPropertyAnimation::finished, this, [=]{
+        eventListWidget->getScrollArea()->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+        eventListWidget->getScrollArea()->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    });
+
+    connect(sizeAnimation, &QPropertyAnimation::finished, this, [=]{
+        stackedWidget->setCurrentWidget(calendarWidget);
+    });
+
+    QParallelAnimationGroup *group = new QParallelAnimationGroup();
+    group->addAnimation(fadeAnimation);
+    group->addAnimation(sizeAnimation);
+
+    group->start(QPropertyAnimation::DeleteWhenStopped);
+}
+
+
+
+
+
+
+
+
+
+
+
 
 
 

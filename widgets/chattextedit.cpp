@@ -1,9 +1,22 @@
 #include "ChatTextEdit.h"
 #include <QFontMetrics>
 #include "QAbstractTextDocumentLayout"
+#include "QScroller"
 
 ChatTextEdit::ChatTextEdit(QWidget *parent) : QTextEdit(parent) {
     connect(this, &ChatTextEdit::textChanged, this, &ChatTextEdit::updateHeight);
+
+#if defined(Q_OS_IOS)
+    QScroller* scroller = QScroller::scroller(this);
+
+    QScrollerProperties properties = scroller->scrollerProperties();
+    properties.setScrollMetric(QScrollerProperties::DragStartDistance, 0.0);
+
+    scroller->setScrollerProperties(properties);
+    scroller->grabGesture(this, QScroller::TouchGesture);
+
+    setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+#endif
 
     minHeight = 40;
     maxHeight = 100;
@@ -17,6 +30,8 @@ void ChatTextEdit::updateHeight() {
 
     int height = qBound(minHeight, docHeight + margins, maxHeight);
 
+//    setVerticalScrollBarPolicy(height < maxHeight ? Qt::ScrollBarAlwaysOff : Qt::ScrollBarAsNeeded);
+
     setFixedHeight(height);
 }
 
@@ -28,6 +43,7 @@ int ChatTextEdit::getMaxHeight() const
 void ChatTextEdit::setMaxHeight(int newMaxHeight)
 {
     maxHeight = newMaxHeight;
+    updateHeight();
 }
 
 int ChatTextEdit::getMinHeight() const
@@ -38,4 +54,5 @@ int ChatTextEdit::getMinHeight() const
 void ChatTextEdit::setMinHeight(int newMinHeight)
 {
     minHeight = newMinHeight;
+    updateHeight();
 }

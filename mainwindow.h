@@ -11,6 +11,7 @@
 #include <QRadioButton>
 #include <QTouchEvent>
 #include "QTextEdit"
+#include "QStackedWidget"
 
 class OpenAIRequest;
 class AudioRecorder;
@@ -18,6 +19,7 @@ class CalendarWidget;
 class SvgButton;
 class ChatTextEdit;
 class AudioLevel;
+class EventListWidget;
 
 class MainWindow : public QMainWindow
 {
@@ -44,8 +46,16 @@ public:
 
     void onApiKeyButtonClicked();
 
+    bool isDarkModeOn(){return isDarkMode;}
     bool isSystemDark();
     void handleThemeChange(bool isDarkMode);
+
+    static QColor lightColor;
+    static QColor lightMidColor;
+    static QColor darkMidColor;
+    static QColor darkColor;
+
+    void updateEventViews();
 
 protected:
     void closeEvent(QCloseEvent *event) override;
@@ -90,7 +100,12 @@ private:
     OpenAIRequest *speechRequest;
     OpenAIRequest *whisperRequest;
 
+    QStackedWidget *stackedWidget;
     CalendarWidget *calendarWidget;
+    EventListWidget *eventListWidget;
+
+    void expandEventList(QDate date);
+    void collapseEventList();
 };
 
 #endif // MAINWINDOW_H

@@ -4,13 +4,14 @@
 #include <QObject>
 #include <QAudioDecoder>
 #include <QVector>
-#include <QFile>
 
-class AudioLevelCalculator : public QObject {
+class AudioLevelCalculator : public QObject
+{
     Q_OBJECT
+
 public:
     explicit AudioLevelCalculator(QObject *parent = nullptr);
-    void calculateLevels(const QString &filePath);
+    void calculateLevels(const QString &filePath, qint64 durationMs);
 
 signals:
     void levelsCalculated(const QVector<float> &levels);
@@ -22,6 +23,7 @@ private slots:
 private:
     QAudioDecoder *decoder;
     QVector<double> rmsValues;
+    qint64 duration;
     void calculateRMS(const QAudioBuffer &buffer);
 };
 

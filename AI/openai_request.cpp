@@ -376,7 +376,6 @@ void OpenAIRequest::playAudio(const QByteArray &audioData)
 
     audioOutput->setVolume(100);
     mediaPlayer->setAudioOutput(audioOutput);
-    mediaPlayer->setSource(QUrl::fromLocalFile(m_filePath));
 
     AudioLevelCalculator *calculator = new AudioLevelCalculator(this);
     connect(calculator, &AudioLevelCalculator::levelsCalculated, this, [=](const QVector<float> &levels){
@@ -391,7 +390,11 @@ void OpenAIRequest::playAudio(const QByteArray &audioData)
         }
     });
 
-    calculator->calculateLevels(m_filePath);
+    connect(mediaPlayer, &QMediaPlayer::durationChanged, this, [=]{
+        calculator->calculateLevels(m_filePath, mediaPlayer->duration());
+    });
+
+    mediaPlayer->setSource(QUrl::fromLocalFile(m_filePath));
 }
 
 

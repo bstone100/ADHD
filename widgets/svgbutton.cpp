@@ -5,7 +5,7 @@
 #include "QFile"
 
 #if defined(Q_OS_IOS)
-#include "iOS/hapticfeedback.h"
+#include "../iOS/hapticfeedback.h"
 #endif
 
 QColor SvgButton::s_defaultColor(Qt::black);

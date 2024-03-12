@@ -6,6 +6,7 @@
 #include <QDate>
 #include <QJsonObject>
 #include <QUuid>
+#include <QColor>
 
 enum Category {
     Task,
@@ -15,6 +16,7 @@ enum Category {
 
 QString categoryToString(Category category);
 Category stringToCategory(const QString &categoryString);
+QColor colorForCategory(Category category);
 
 struct CalendarEvent {
     QString id;

@@ -34,7 +34,7 @@ QAbstractButton:disabled {
 }
 
 QComboBox {
-    border: 2px solid #5A4EA6; /* Border color */
+    border: 2px solid #3D315B; /* Border color */
     border-radius: 5px;
     padding: 4px 8px;
     color: #3D315B; /* Dark text color */
@@ -101,20 +101,30 @@ QCalendarWidget QAbstractItemView
     background-color: #F2E9FF;
     selection-background-color: #3D315B; /* the color of the selected cell */
     selection-color: #F2E9FF; /* the color of the selected cell's text */
+    gridline-color: #3D315B;
 }
 
 /* header row */
 QCalendarWidget QWidget {
     alternate-background-color: #F2E9FF;
+
 }
 
 /* navigation bar */
 QCalendarWidget QWidget#qt_calendar_navigationbar
 {
     background-color: #F2E9FF;
+
 }
 
+SidePanel {
+    background-color: #D1C8E1;
+}
 
+QScrollArea {
+    background: transparent;
+    border: none;
+}
 
 
 

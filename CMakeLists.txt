@@ -48,6 +48,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         widgets/svgbutton.h widgets/svgbutton.cpp
         widgets/chattextedit.h widgets/chattextedit.cpp
         audio/audiolevelcalculator.h audio/audiolevelcalculator.cpp
+        widgets/eventlistwidget.h widgets/eventlistwidget.cpp
     )
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET ADHD APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR

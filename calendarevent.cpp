@@ -16,6 +16,19 @@ Category stringToCategory(const QString &categoryString) {
     return Task; // Default case, or throw an exception as per your error handling policy
 }
 
+QColor colorForCategory(Category category) {
+    switch (category) {
+    case Task:
+        return Qt::green;
+    case Habit:
+        return Qt::blue;
+    case Deadline:
+        return Qt::red;
+    default:
+        return Qt::lightGray;
+    }
+}
+
 CalendarEvent::CalendarEvent() : id(QString::number(QUuid::createUuid().data1)), category(Task) {
 }
 

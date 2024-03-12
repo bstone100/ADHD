@@ -15,24 +15,24 @@ class CalendarWidget : public QCalendarWidget {
 public:
     explicit CalendarWidget(QWidget *parent = nullptr);
 
-    void addEvent(const CalendarEvent &event);
-    void removeEvent(const CalendarEvent &event);
-
-    QJsonObject getJsonObject();
-    void loadJsonObject(const QJsonObject &jObj);
-
-    void saveSettings();
-    void loadSettings();
-
     void handleContextMenuRequested(const QPoint &pos);
+
+    void updateCells();
+
+    QDate dateAt(const QPoint &pos);
+    QPoint globalPointForDate(const QDate &date) const;
+    QSize cellSize();
+
+    bool isDateInCurrentMonth(const QDate &date) const;
 
 protected:
     void paintCell(QPainter *painter, const QRect &rect, QDate date) const override;
+    bool eventFilter(QObject *watched, QEvent *event) override;
 
 private:
-    QMap<QDate, QList<CalendarEvent>> events;
-
     QTableView *tableView;
+
+    QDate pressedDate;
 };
 
 #endif // CALENDARWIDGET_H

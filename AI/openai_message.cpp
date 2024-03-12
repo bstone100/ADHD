@@ -1,7 +1,7 @@
 #include "openai_message.h"
 #include "QtCore/qjsondocument.h"
 #include "../mainwindow.h"
-#include "../widgets/calendarwidget.h"
+#include "../calendareventmanager.h"
 
 OpenAIMessage::OpenAIMessage(QObject *parent):
     QObject(parent)
@@ -81,7 +81,7 @@ QString OpenAIMessage::getUserMessage()
 
 void OpenAIMessage::addScenegraph()
 {
-    m_contentObject["scenegraph"] = MainWindow::self()->getCalendarWidget()->getJsonObject();
+    m_contentObject["scenegraph"] = CalendarEventManager::self()->getJsonObject();
     m_scenegraph = m_contentObject["scenegraph"].toObject();
 }
 

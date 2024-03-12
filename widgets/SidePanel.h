@@ -19,9 +19,9 @@ public:
     void collapse();
     void toggle();
 
-    bool expanding();
-    bool collapsing();
-
+    bool isExpanding();
+    bool isCollapsing();
+    bool isVisibleToUser();
     bool isExpanded(){return isPanelOpen;}
 
     void updateSize();

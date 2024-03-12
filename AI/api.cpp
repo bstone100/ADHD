@@ -5,7 +5,6 @@
 #include "QJsonObject"
 #include "QtCore/qjsonarray.h"
 #include "QtCore/qjsondocument.h"
-#include "../widgets/calendarwidget.h"
 #include "../calendarevent.h"
 #include "../mainwindow.h"
 #include "../calendareventmanager.h"
@@ -162,7 +161,7 @@ QString API::addEvent(const QJsonObject &jsonObject)
     }
 
     CalendarEventManager::self()->addEvent(event);
-    MainWindow::self()->getCalendarWidget()->addEvent(event);
+    MainWindow::self()->updateEventViews();
 
     return "Added event.";
 }
@@ -178,7 +177,7 @@ QString API::removeEvent(const QJsonObject &jsonObject)
     CalendarEvent event = CalendarEventManager::self()->getEvent(id);
 
     CalendarEventManager::self()->removeEvent(id);
-    MainWindow::self()->getCalendarWidget()->removeEvent(event);
+    MainWindow::self()->updateEventViews();
 
     return "CalendarEvent removed";
 }

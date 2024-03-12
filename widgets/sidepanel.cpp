@@ -6,7 +6,7 @@
 #include "QEvent"
 
 #if defined(Q_OS_IOS)
-#include "iOS/hapticfeedback.h"
+#include "../iOS/hapticfeedback.h"
 #endif
 
 
@@ -27,7 +27,6 @@ SidePanel::SidePanel(QWidget *parent) : QWidget(parent) {
 #endif
 
     setAttribute(Qt::WA_StyledBackground);
-    setStyleSheet("SidePanel{background-color: #d8c7f0;}");
 
     vLayout = new QVBoxLayout;
     setLayout(vLayout);
@@ -82,7 +81,7 @@ SidePanel *SidePanel::self()
 // when main window resizes
 void SidePanel::updateSize()
 {
-    if (isPanelOpen && !collapsing()) {
+    if (isPanelOpen && !isCollapsing()) {
         setGeometry(openGeometry());
         closeButton->setGeometry(closeButtonGeometry());
     }
@@ -149,7 +148,7 @@ void SidePanel::touchEvent(QTouchEvent *event) {
 
         int newX = qBound(-calculateWidth(), x() + dx, 0); // range of x values
 
-        const int edgeThreshold = 10; // maximum distance from left edge to be considered a swipe
+        const int edgeThreshold = 30; // maximum distance from left edge to be considered a swipe
 
         if (isPanelOpen || touchStartPoint.x() <= edgeThreshold) { // attempting to close or open
 #if defined(Q_OS_IOS)
@@ -215,25 +214,30 @@ void SidePanel::handleSwipeEnd() {
 }
 
 void SidePanel::toggle() {
-    if (isPanelOpen || expanding()) {
+    if (isPanelOpen || isExpanding()) {
         collapse();
-    } else if (!isPanelOpen || collapsing()) {
+    } else if (!isPanelOpen || isCollapsing()) {
         expand();
     }
 }
 
-bool SidePanel::expanding()
+bool SidePanel::isExpanding()
 {
     return expandAnimation->state() == QPropertyAnimation::Running;
 }
 
-bool SidePanel::collapsing()
+bool SidePanel::isCollapsing()
 {
     return collapseAnimation->state() == QPropertyAnimation::Running;
 }
 
+bool SidePanel::isVisibleToUser()
+{
+    return isVisible() && geometry().right() > 0;
+}
+
 void SidePanel::expand() {
-    if (collapsing()) {
+    if (isCollapsing()) {
         collapseAnimation->stop();
     }
 
@@ -264,7 +268,7 @@ void SidePanel::collapse() {
         return;
     }
 
-    if (expanding()) {
+    if (isExpanding()) {
         expandAnimation->stop();
     }
 
