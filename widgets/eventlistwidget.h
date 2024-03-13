@@ -11,6 +11,8 @@
 #include <QTime>
 #include "../calendarevent.h"
 
+class SvgButton;
+
 class EventListWidget : public QWidget {
     Q_OBJECT
 
@@ -33,7 +35,8 @@ private:
     QList<CalendarEvent> currentEvents;
     QVBoxLayout *eventsLayout;
     QLabel *dateLabel;
-    QPushButton *backButton;
+    QLabel *backLabel;
+    SvgButton *backButton;
     QScrollArea *scrollArea;
 
 };

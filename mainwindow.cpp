@@ -21,6 +21,7 @@
 #include "calendareventmanager.h"
 #include "QGraphicsOpacityEffect"
 #include "QParallelAnimationGroup"
+#include "QStackedLayout"
 
 #if defined(Q_OS_IOS)
 #include "qstandardpaths.h"
@@ -218,8 +219,8 @@ MainWindow::MainWindow(QWidget *parent)
     calendarWidget = new CalendarWidget(stackedWidget);
     eventListWidget = new EventListWidget(stackedWidget);
 
-    stackedWidget->addWidget(calendarWidget); // Index 0
-    stackedWidget->addWidget(eventListWidget); // Index 1
+    stackedWidget->addWidget(calendarWidget);
+    stackedWidget->addWidget(eventListWidget);
 
     connect(calendarWidget, &QCalendarWidget::clicked, this, &MainWindow::expandEventList);
     connect(eventListWidget, &EventListWidget::backButtonClicked, this, &MainWindow::collapseEventList);
@@ -591,79 +592,86 @@ void MainWindow::resizeEvent(QResizeEvent *event)
 void MainWindow::expandEventList(QDate date) {
     eventListWidget->setDate(date);
 
-    static const int duration = 250;
+    static const int duration = 350;
 
-    QPropertyAnimation *sizeAnimation = new QPropertyAnimation(eventListWidget, "geometry");
-    sizeAnimation->setDuration(duration);
+    // Set up size animation for event list widget
+    QPropertyAnimation *eventListSizeAnimation = new QPropertyAnimation(eventListWidget, "geometry");
+    eventListSizeAnimation->setDuration(duration);
 
-    QGraphicsOpacityEffect *opacityEffect = new QGraphicsOpacityEffect(eventListWidget);
-    eventListWidget->setGraphicsEffect(opacityEffect);
-    QPropertyAnimation *fadeAnimation = new QPropertyAnimation(opacityEffect, "opacity");
-    fadeAnimation->setDuration(duration);
-    fadeAnimation->setStartValue(0.0);
-    fadeAnimation->setEndValue(1.0);
+    QPropertyAnimation *calendarSizeAnimation = new QPropertyAnimation(calendarWidget, "geometry");
+    calendarSizeAnimation->setDuration(duration);
+
+    eventListSizeAnimation->setEasingCurve(QEasingCurve::Linear);
+    calendarSizeAnimation->setEasingCurve(QEasingCurve::Linear);
 
     QPoint pos = stackedWidget->mapFromGlobal(calendarWidget->globalPointForDate(date));
-    QRect startRect(pos, calendarWidget->cellSize());
-    QRect endRect = calendarWidget->geometry();
+    cellGeometry = QRect(pos, calendarWidget->cellSize());
+    stackGeometry = calendarWidget->geometry();
 
-    sizeAnimation->setStartValue(startRect);
-    sizeAnimation->setEndValue(endRect);
+    eventListSizeAnimation->setStartValue(cellGeometry);
+    eventListSizeAnimation->setEndValue(stackGeometry);
 
+    calendarSizeAnimation->setStartValue(stackGeometry);
+    calendarSizeAnimation->setEndValue(cellGeometry);
+
+    // Disable scrollbars temporarily
     eventListWidget->getScrollArea()->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     eventListWidget->getScrollArea()->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
-    connect(sizeAnimation, &QPropertyAnimation::finished, this, [=]{
+    // Re-enable scrollbars when the animation finishes
+    connect(eventListSizeAnimation, &QPropertyAnimation::finished, this, [=]{
         eventListWidget->getScrollArea()->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
         eventListWidget->getScrollArea()->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+        calendarWidget->hide();
     });
 
-    stackedWidget->setCurrentWidget(eventListWidget);
+    QParallelAnimationGroup *group = new QParallelAnimationGroup(this);
+    group->addAnimation(eventListSizeAnimation);
+    group->addAnimation(calendarSizeAnimation);
 
-    QParallelAnimationGroup *group = new QParallelAnimationGroup();
-    group->addAnimation(fadeAnimation);
-    group->addAnimation(sizeAnimation);
-
-    group->start(QPropertyAnimation::DeleteWhenStopped);
+    QTimer::singleShot(75, this, [=]{
+        stackedWidget->setCurrentWidget(eventListWidget);
+        calendarWidget->show();
+        group->start(QPropertyAnimation::DeleteWhenStopped);
+    });
 }
 
+
 void MainWindow::collapseEventList() {
-    static const int duration = 250;
+    static const int duration = 350;
 
-    QPropertyAnimation *sizeAnimation = new QPropertyAnimation(eventListWidget, "geometry");
-    sizeAnimation->setDuration(duration);
+    // Set up size animation for event list widget
+    QPropertyAnimation *eventListSizeAnimation = new QPropertyAnimation(eventListWidget, "geometry");
+    eventListSizeAnimation->setDuration(duration);
 
-    QGraphicsOpacityEffect *opacityEffect = new QGraphicsOpacityEffect(eventListWidget);
-    eventListWidget->setGraphicsEffect(opacityEffect);
-    QPropertyAnimation *fadeAnimation = new QPropertyAnimation(opacityEffect, "opacity");
-    fadeAnimation->setDuration(duration);
-    fadeAnimation->setStartValue(1.0);
-    fadeAnimation->setEndValue(0.0);
+    QPropertyAnimation *calendarSizeAnimation = new QPropertyAnimation(calendarWidget, "geometry");
+    calendarSizeAnimation->setDuration(duration);
 
+    eventListSizeAnimation->setEasingCurve(QEasingCurve::Linear);
+    calendarSizeAnimation->setEasingCurve(QEasingCurve::Linear);
 
-    QPoint pos = stackedWidget->mapFromGlobal(calendarWidget->globalPointForDate(eventListWidget->getCurrentDate()));
-    QRect startRect = eventListWidget->geometry();
-    QRect endRect(pos, calendarWidget->cellSize());
+    eventListSizeAnimation->setStartValue(stackGeometry);
+    eventListSizeAnimation->setEndValue(cellGeometry);
 
-    sizeAnimation->setStartValue(startRect);
-    sizeAnimation->setEndValue(endRect);
+    calendarSizeAnimation->setStartValue(cellGeometry);
+    calendarSizeAnimation->setEndValue(stackGeometry);
 
+    // Temporarily disable scrollbars
     eventListWidget->getScrollArea()->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     eventListWidget->getScrollArea()->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
-    connect(sizeAnimation, &QPropertyAnimation::finished, this, [=]{
+    // Re-enable scrollbars and switch widgets when the animation finishes
+    connect(eventListSizeAnimation, &QPropertyAnimation::finished, this, [=]{
         eventListWidget->getScrollArea()->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
         eventListWidget->getScrollArea()->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+        stackedWidget->setCurrentWidget(calendarWidget); // Switch back to the calendar widget
     });
 
-    connect(sizeAnimation, &QPropertyAnimation::finished, this, [=]{
-        stackedWidget->setCurrentWidget(calendarWidget);
-    });
+    QParallelAnimationGroup *group = new QParallelAnimationGroup(this);
+    group->addAnimation(eventListSizeAnimation);
+    group->addAnimation(calendarSizeAnimation);
 
-    QParallelAnimationGroup *group = new QParallelAnimationGroup();
-    group->addAnimation(fadeAnimation);
-    group->addAnimation(sizeAnimation);
-
+    calendarWidget->show();
     group->start(QPropertyAnimation::DeleteWhenStopped);
 }
 

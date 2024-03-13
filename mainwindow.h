@@ -57,6 +57,7 @@ public:
 
     void updateEventViews();
 
+    bool animating = false;
 protected:
     void closeEvent(QCloseEvent *event) override;
     void keyPressEvent(QKeyEvent *event) override;
@@ -106,6 +107,8 @@ private:
 
     void expandEventList(QDate date);
     void collapseEventList();
+    QRect stackGeometry;
+    QRect cellGeometry;
 };
 
 #endif // MAINWINDOW_H

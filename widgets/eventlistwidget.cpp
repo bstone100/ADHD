@@ -2,14 +2,27 @@
 #include <QHBoxLayout>
 #include <QDateTime>
 #include "../calendareventmanager.h"
+#include "svgbutton.h"
 
 EventListWidget::EventListWidget(QWidget *parent) : QWidget(parent) {
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
+    mainLayout->setContentsMargins(0,0,0,0);
+
+//    setAttribute(Qt::WA_StyledBackground);
 
     // Top layout with back button aligned to the left
     QHBoxLayout *topLayout = new QHBoxLayout();
-    backButton = new QPushButton("Back", this);
+
+    backButton = new SvgButton(this);
+    backButton->setSvgPath(":/images/leftArrow.svg");
+    backButton->setIconSize(QSize(30,30));
+    backButton->setFixedSize(90, 50);
+    backButton->setUsingAppColors(true);
     topLayout->addWidget(backButton);
+
+    backLabel = new QLabel();
+//    topLayout->addWidget(backLabel);
+
     topLayout->addStretch(); // This pushes the backButton to the left
     mainLayout->addLayout(topLayout);
 
@@ -41,6 +54,7 @@ EventListWidget::EventListWidget(QWidget *parent) : QWidget(parent) {
 void EventListWidget::setDate(const QDate &date) {
     currentDate = date;
     dateLabel->setText(currentDate.toString("dddd, MMMM d, yyyy"));
+    backLabel->setText(currentDate.toString("MMMM"));
     updateEvents();
 }
 

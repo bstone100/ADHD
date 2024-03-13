@@ -84,6 +84,10 @@ CalendarWidget::CalendarWidget(QWidget *parent) : QCalendarWidget(parent) {
 
 void CalendarWidget::paintCell(QPainter *painter, const QRect &rect, QDate date) const {
 //    QCalendarWidget::paintCell(painter, rect, date);
+//    if (MainWindow::self()->animating) {
+//        qDebug() << "caught paint";
+//        return;
+//    }
 
     if (!isDateInCurrentMonth(date)) return;
 
