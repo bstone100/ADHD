@@ -30,6 +30,10 @@ public:
 signals:
     void backButtonClicked();
 
+protected:
+    bool event(QEvent *event) override;
+    bool eventFilter(QObject *watched, QEvent *event) override;
+
 private:
     QDate currentDate;
     QList<CalendarEvent> currentEvents;

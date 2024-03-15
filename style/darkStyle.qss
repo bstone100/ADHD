@@ -126,7 +126,9 @@ QScrollArea {
     border: none;
 }
 
-
+EventListWidget {
+    background: transparent;
+}
 
 
 

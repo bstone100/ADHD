@@ -104,6 +104,7 @@ QCalendarWidget QAbstractItemView
     gridline-color: #3D315B;
 }
 
+
 /* header row */
 QCalendarWidget QWidget {
     alternate-background-color: #F2E9FF;
@@ -126,6 +127,9 @@ QScrollArea {
     border: none;
 }
 
+EventListWidget {
+    background: transparent;
+}
 
 
 

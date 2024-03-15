@@ -3,12 +3,13 @@
 #include <QDateTime>
 #include "../calendareventmanager.h"
 #include "svgbutton.h"
+#include "../mainwindow.h"
 
 EventListWidget::EventListWidget(QWidget *parent) : QWidget(parent) {
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(0,0,0,0);
 
-//    setAttribute(Qt::WA_StyledBackground);
+    setAttribute(Qt::WA_StyledBackground);
 
     // Top layout with back button aligned to the left
     QHBoxLayout *topLayout = new QHBoxLayout();
@@ -30,6 +31,7 @@ EventListWidget::EventListWidget(QWidget *parent) : QWidget(parent) {
     QHBoxLayout *dateLayout = new QHBoxLayout();
     dateLabel = new QLabel(this);
     dateLabel->setStyleSheet("font-size: 20px;");
+    dateLabel->installEventFilter(this);
     dateLabel->setAlignment(Qt::AlignCenter); // Ensure text is centered in the label
     dateLayout->addWidget(dateLabel, 0, Qt::AlignCenter); // Add the dateLabel to the layout with centered alignment
     mainLayout->addLayout(dateLayout); // Add date layout below the top layout
@@ -92,6 +94,29 @@ QDate EventListWidget::getCurrentDate() const
 QScrollArea *EventListWidget::getScrollArea() const
 {
     return scrollArea;
+}
+
+bool EventListWidget::event(QEvent *event)
+{
+    switch (event->type()) {
+    case QEvent::MouseButtonRelease:
+        // if expanding then collapse
+        if (MainWindow::self()->isEventListExpanding()) {
+            MainWindow::self()->collapseEventList();
+        } else if (MainWindow::self()->isEventListCollapsing()) {
+            MainWindow::self()->expandEventList(currentDate);
+        }
+        break;
+    default:
+        break;
+    }
+
+    return QWidget::event(event);
+}
+
+bool EventListWidget::eventFilter(QObject *watched, QEvent *event)
+{
+    return QWidget::eventFilter(watched, event);
 }
 
 

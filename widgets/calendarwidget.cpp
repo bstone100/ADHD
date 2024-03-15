@@ -13,19 +13,21 @@
 #include "svgbutton.h"
 
 CalendarWidget::CalendarWidget(QWidget *parent) : QCalendarWidget(parent) {
-//    auto children = findChildren<QTableView *>();
-//    if (!children.isEmpty()) {
-//        tableView = children[0];
-//    }
-//    Q_ASSERT(tableView);
+    auto children = findChildren<QTableView *>();
+    if (!children.isEmpty()) {
+        tableView = children[0];
+    }
+    Q_ASSERT(tableView);
+
+    tableView->installEventFilter(this);
 
 //    auto children = findChildren<QWidget *>();
 //    foreach (auto child, children) {
 //        child->installEventFilter(this);
 //    }
 //    qt_scrollarea_viewport
-    QWidget *mainWidget = findChild<QWidget *>("qt_scrollarea_viewport");
-    mainWidget->installEventFilter(this);
+    cellViewWidget = findChild<QWidget *>("qt_scrollarea_viewport");
+    cellViewWidget->installEventFilter(this);
 
 
 //    auto childWidgets = findChildren<QWidget *>();
@@ -132,18 +134,22 @@ bool CalendarWidget::eventFilter(QObject *watched, QEvent *event)
 {
     switch (event->type()) {
     case QEvent::MouseButtonPress: {
-        QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
-        QPoint pos = mapFromGlobal(mouseEvent->globalPosition().toPoint());
-        pressedDate = dateAt(pos);
+        if (watched == cellViewWidget) {
+            QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
+            QPoint pos = mapFromGlobal(mouseEvent->globalPosition().toPoint());
+            pressedDate = dateAt(pos);
+        }
         break;
     }
     case QEvent::MouseButtonRelease: {
-        QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
-        QPoint pos = mapFromGlobal(mouseEvent->globalPosition().toPoint());
-        QDate date = dateAt(pos);
-        if (!isDateInCurrentMonth(date) || date != pressedDate || SidePanel::self()->isVisibleToUser()) {
-            event->ignore();
-            return true;
+        if (watched == cellViewWidget) {
+            QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
+            QPoint pos = mapFromGlobal(mouseEvent->globalPosition().toPoint());
+            QDate date = dateAt(pos);
+            if (!isDateInCurrentMonth(date) || date != pressedDate || SidePanel::self()->isVisibleToUser()) {
+                event->ignore();
+                return true;
+            }
         }
         break;
     }
@@ -152,6 +158,16 @@ bool CalendarWidget::eventFilter(QObject *watched, QEvent *event)
     }
 
     return QCalendarWidget::eventFilter(watched, event);
+}
+
+QTableView *CalendarWidget::getTableView() const
+{
+    return tableView;
+}
+
+QWidget *CalendarWidget::getCellViewWidget() const
+{
+    return cellViewWidget;
 }
 
 void CalendarWidget::handleContextMenuRequested(const QPoint &pos) {
@@ -279,6 +295,23 @@ QPoint CalendarWidget::globalPointForDate(const QDate &date) const {
     return QPoint(width() / 2, height() / 2);
 }
 
+QPoint CalendarWidget::centerCellPointForDate(const QDate &date)
+{
+    auto p = mapFromGlobal(globalPointForDate(date));
+
+    p.rx() += cellSize().width() / 2;
+    p.ry() += cellSize().height() / 2;
+
+    return p;
+}
+
+QRect CalendarWidget::cellRectForDate(const QDate &date)
+{
+    auto p = mapFromGlobal(globalPointForDate(date));
+
+    return QRect(p, cellSize());
+}
+
 QSize CalendarWidget::cellSize()
 {
     const QTableView* const view = findChild<const QTableView*>();
@@ -298,6 +331,11 @@ QSize CalendarWidget::cellSize()
 bool CalendarWidget::isDateInCurrentMonth(const QDate &date) const
 {
     return date.month() == monthShown() && date.year() == yearShown();
+}
+
+void CalendarWidget::grabAspectRatio()
+{
+    aspectRatio = (double)tableView->width() / (double)tableView->height();
 }
 
 

@@ -57,7 +57,13 @@ public:
 
     void updateEventViews();
 
-    bool animating = false;
+    bool isEventListExpanding() const;
+    bool isEventListCollapsing() const;
+
+    void expandEventList(QDate date);
+    void collapseEventList();
+
+
 protected:
     void closeEvent(QCloseEvent *event) override;
     void keyPressEvent(QKeyEvent *event) override;
@@ -105,10 +111,12 @@ private:
     CalendarWidget *calendarWidget;
     EventListWidget *eventListWidget;
 
-    void expandEventList(QDate date);
-    void collapseEventList();
+
     QRect stackGeometry;
     QRect cellGeometry;
+    QRect calculateExplosionRect(QDate date);
+    bool eventListExpanding = false;
+    bool eventListCollapsing = false;
 };
 
 #endif // MAINWINDOW_H
