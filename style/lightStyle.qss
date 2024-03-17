@@ -99,8 +99,8 @@ QToolButton:hover, QToolButton:pressed {
 QCalendarWidget QAbstractItemView
 {
     background-color: #F2E9FF;
-    selection-background-color: #3D315B; /* the color of the selected cell */
-    selection-color: #F2E9FF; /* the color of the selected cell's text */
+    selection-background-color: #F2E9FF; /* the color of the selected cell */
+    selection-color: #3D315B; /* the color of the selected cell's text */
     gridline-color: #3D315B;
 }
 
@@ -128,7 +128,7 @@ QScrollArea {
 }
 
 EventListWidget {
-    background: transparent;
+    background: #F2E9FF;
 }
 
 

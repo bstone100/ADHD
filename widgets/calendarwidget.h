@@ -20,31 +20,38 @@ public:
     void updateCells();
 
     QDate dateAt(const QPoint &pos);
-    QPoint globalPointForDate(const QDate &date) const;
-    QPoint centerCellPointForDate(const QDate &date);
-    QRect cellRectForDate(const QDate &date);
-    QSize cellSize();
 
     bool isDateInCurrentMonth(const QDate &date) const;
 
-    void grabAspectRatio();
-
-
-    QWidget *getCellViewWidget() const;
+    void cacheInitialCellGeometry();
 
     QTableView *getTableView() const;
+    QRect getTableViewInitialGeometry() const;
+
+    // in global space
+    QRect getCurrentCellRectForDate(QDate date);
+    QRect getInitialCellRectForDate(QDate date);
+
+    QPoint getInitialGlobalPointFromDate(QDate date);
+    QPoint getInitialLocalPointFromDate(QDate date);
 
 protected:
     void paintCell(QPainter *painter, const QRect &rect, QDate date) const override;
     bool eventFilter(QObject *watched, QEvent *event) override;
+    bool event(QEvent *event) override;
 
 private:
     QTableView *tableView;
 
     QDate pressedDate;
 
-    double aspectRatio;
+    // registers clicks on top of the table view
     QWidget *cellViewWidget;
+
+    QRect tableViewInitialGeometry;
+    QSize initialCellSize;
+    QMap<QDate, QPoint> dateToInitialGlobalPointMap;
+    QMap<QDate, QPoint> dateToInitialLocalPointMap;
 };
 
 #endif // CALENDARWIDGET_H

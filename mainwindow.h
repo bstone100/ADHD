@@ -12,6 +12,7 @@
 #include <QTouchEvent>
 #include "QTextEdit"
 #include "QStackedWidget"
+#include "QtWidgets/qlabel.h"
 
 class OpenAIRequest;
 class AudioRecorder;
@@ -110,10 +111,8 @@ private:
     QStackedWidget *stackedWidget;
     CalendarWidget *calendarWidget;
     EventListWidget *eventListWidget;
+    QLabel *eventListSnapshot;
 
-
-    QRect stackGeometry;
-    QRect cellGeometry;
     QRect calculateExplosionRect(QDate date);
     bool eventListExpanding = false;
     bool eventListCollapsing = false;

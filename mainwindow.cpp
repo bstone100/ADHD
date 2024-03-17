@@ -218,9 +218,14 @@ MainWindow::MainWindow(QWidget *parent)
     stackedWidget = new QStackedWidget(this);
     calendarWidget = new CalendarWidget(stackedWidget);
     eventListWidget = new EventListWidget(stackedWidget);
+    eventListSnapshot = new QLabel(stackedWidget);
+    eventListSnapshot->setScaledContents(true);
+    eventListSnapshot->setStyleSheet("border: none; padding: 0px; margin: 0px; background: transparent;");
+//    eventListSnapshot->installEventFilter(this);
 
     stackedWidget->addWidget(calendarWidget);
     stackedWidget->addWidget(eventListWidget);
+    stackedWidget->addWidget(eventListSnapshot);
 
     connect(calendarWidget, &QCalendarWidget::clicked, this, &MainWindow::expandEventList);
     connect(eventListWidget, &EventListWidget::backButtonClicked, this, &MainWindow::collapseEventList);
@@ -494,6 +499,8 @@ void MainWindow::loadSettings()
     restoreGeometry(settings->value("mainWindow/geometry").toByteArray());
     restoreState(settings->value("mainWindow/windowState").toByteArray());
 
+    QTimer::singleShot(5, calendarWidget, &CalendarWidget::cacheInitialCellGeometry);
+
     settingsLoaded = true;
 }
 
@@ -522,13 +529,22 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
     case QEvent::TouchBegin:
     case QEvent::TouchUpdate:
     case QEvent::TouchEnd:
-        // route all touch events through the side panel
+        // route all touch events through the side panel for now
         SidePanel::self()->touchEvent(static_cast<QTouchEvent*>(event));
         break;
     default:
         break;
     }
 
+
+    // toggle the animation
+    if (obj == eventListSnapshot && event->type() == QEvent::MouseButtonRelease) {
+        if (MainWindow::self()->isEventListExpanding()) {
+            MainWindow::self()->collapseEventList();
+        } else if (MainWindow::self()->isEventListCollapsing()) {
+            MainWindow::self()->expandEventList(eventListWidget->getCurrentDate());
+        }
+    }
 
 
 
@@ -591,24 +607,24 @@ void MainWindow::resizeEvent(QResizeEvent *event)
 
 
 QRect MainWindow::calculateExplosionRect(QDate date) {
-    // Ensure you've correctly initialized calendarWidget somewhere in your code
+    // use initial values for calculations
+    // returning rect in table view space
 
-    QSize initialCalendarSize = stackGeometry.size(); // Original calendar size
-    QPoint cellGlobalTopLeft = calendarWidget->globalPointForDate(date); // Global top-left corner of the cell
-    QSize cellSize = calendarWidget->cellSize(); // Size of the cell
+    QSize initialCalendarSize = calendarWidget->getTableViewInitialGeometry().size();
+    QSize initialCellSize = calendarWidget->getInitialCellRectForDate(date).size();
 
     // Convert cell's global top-left to calendar widget's local coordinates
-    QPoint cellTopLeftLocal = calendarWidget->getTableView()->mapFromGlobal(cellGlobalTopLeft);
+    QPoint cellTopLeftLocal = calendarWidget->getInitialLocalPointFromDate(date);
 
-    // adjust.. idk why
+    // adjust.. idk why.. arbitrary for now
     // probably due to hidden margins or padding in the qcalendarwidget
-    cellTopLeftLocal.ry() -= 8; // ??
-    if (cellTopLeftLocal.x() > cellSize.width()) {
-        cellTopLeftLocal.rx() -= 1; // ??
+    cellTopLeftLocal.ry() -= 8;
+    if (cellTopLeftLocal.x() > initialCellSize.width()) {
+        cellTopLeftLocal.rx() -= 1;
     }
 
     // keep aspect ratio of calendar widget
-    double scale = double(initialCalendarSize.width()) / double(cellSize.width());
+    double scale = double(initialCalendarSize.width()) / double(initialCellSize.width());
 
     QPoint newTopLeft(-cellTopLeftLocal * scale);
     QSize newCalendarSize = initialCalendarSize * scale;
@@ -616,6 +632,119 @@ QRect MainWindow::calculateExplosionRect(QDate date) {
     QRect newGeometry(newTopLeft, newCalendarSize);
 
     return newGeometry;
+}
+
+void MainWindow::expandEventList(QDate date) {
+    eventListWidget->setDate(date);
+
+    static const int duration = 300;
+
+    // Set up size animation for event list widget
+    QPropertyAnimation *eventListSizeAnimation = new QPropertyAnimation(eventListSnapshot, "geometry");
+    eventListSizeAnimation->setDuration(duration);
+
+    QPropertyAnimation *calendarSizeAnimation = new QPropertyAnimation(calendarWidget->getTableView(), "geometry");
+    calendarSizeAnimation->setDuration(duration);
+
+    eventListSizeAnimation->setEasingCurve(QEasingCurve::OutQuad);
+    calendarSizeAnimation->setEasingCurve(QEasingCurve::OutQuad);
+
+    // expand from wherever we currently are
+    // start values dependent: calendar starts at current geom and event list starts at current cell size
+    // end values constant: calendar ends at explosion geom and event list ends at initial calendar geom
+
+    QRect currentCellRect = calendarWidget->getCurrentCellRectForDate(calendarWidget->selectedDate());
+    currentCellRect.moveTopLeft(stackedWidget->mapFromGlobal(currentCellRect.topLeft()));
+
+    QRect explosionRect = calculateExplosionRect(date);
+
+    // expand from cell to full size
+    eventListSizeAnimation->setStartValue(currentCellRect);
+    eventListSizeAnimation->setEndValue(calendarWidget->getTableViewInitialGeometry());
+
+    // expand from full size to massive size to give the effect of exploding
+    calendarSizeAnimation->setStartValue(calendarWidget->getTableView()->geometry());
+    calendarSizeAnimation->setEndValue(explosionRect);
+
+    // Re-enable scrollbars when the animation finishes
+    connect(calendarSizeAnimation, &QPropertyAnimation::finished, this, [=]{
+        stackedWidget->setCurrentWidget(eventListWidget);
+        calendarWidget->hide();
+        eventListExpanding = false;
+    });
+
+    QParallelAnimationGroup *group = new QParallelAnimationGroup(this);
+    group->addAnimation(eventListSizeAnimation);
+    group->addAnimation(calendarSizeAnimation);
+
+    eventListSnapshot->hide();
+    eventListWidget->setGeometry(calendarWidget->getTableViewInitialGeometry());
+    QPixmap pixmap(eventListWidget->size());
+    eventListWidget->render(&pixmap);
+    eventListSnapshot->setPixmap(pixmap);
+    eventListSnapshot->show();
+
+    QTimer::singleShot(0, this, [=]{
+        stackedWidget->setCurrentWidget(eventListSnapshot);
+        calendarWidget->show();
+        eventListExpanding = true;
+        eventListCollapsing = false;
+        group->start(QPropertyAnimation::DeleteWhenStopped);
+    });
+}
+
+
+void MainWindow::collapseEventList() {
+    static const int duration = 200;
+
+    // Set up size animation for event list widget
+    QPropertyAnimation *eventListSizeAnimation = new QPropertyAnimation(eventListSnapshot, "geometry");
+    eventListSizeAnimation->setDuration(duration);
+
+    QPropertyAnimation *calendarSizeAnimation = new QPropertyAnimation(calendarWidget->getTableView(), "geometry");
+    calendarSizeAnimation->setDuration(duration);
+
+    eventListSizeAnimation->setEasingCurve(QEasingCurve::OutQuad);
+    calendarSizeAnimation->setEasingCurve(QEasingCurve::OutQuad);
+
+    // collapse from wherever we currently are
+    // start values dependent: calendar is current geom and event list is current cell size
+    // end values constant: calendar is initial calendar and event list is initial cell
+
+    QRect currentCellRect = calendarWidget->getCurrentCellRectForDate(calendarWidget->selectedDate());
+    currentCellRect.moveTopLeft(stackedWidget->mapFromGlobal(currentCellRect.topLeft()));
+
+    QRect initialCellRect = calendarWidget->getInitialCellRectForDate(calendarWidget->selectedDate());
+    initialCellRect.moveTopLeft(stackedWidget->mapFromGlobal(initialCellRect.topLeft()));
+
+    eventListSizeAnimation->setStartValue(currentCellRect);
+    eventListSizeAnimation->setEndValue(initialCellRect);
+
+    calendarSizeAnimation->setStartValue(calendarWidget->getTableView()->geometry());
+    calendarSizeAnimation->setEndValue(calendarWidget->getTableViewInitialGeometry());
+
+    // Re-enable scrollbars and switch widgets when the animation finishes
+    connect(eventListSizeAnimation, &QPropertyAnimation::finished, this, [=]{
+        stackedWidget->setCurrentWidget(calendarWidget); // Switch back to the calendar widget
+        eventListCollapsing = false;
+    });
+
+    QParallelAnimationGroup *group = new QParallelAnimationGroup(this);
+    group->addAnimation(eventListSizeAnimation);
+    group->addAnimation(calendarSizeAnimation);
+
+    eventListSnapshot->hide();
+    eventListWidget->setGeometry(calendarWidget->getTableViewInitialGeometry());
+    QPixmap pixmap(eventListWidget->size());
+    eventListWidget->render(&pixmap);
+    eventListSnapshot->setPixmap(pixmap);
+    eventListSnapshot->show();
+
+    stackedWidget->setCurrentWidget(eventListSnapshot);
+    calendarWidget->show();
+    eventListExpanding = false;
+    eventListCollapsing = true;
+    group->start(QPropertyAnimation::DeleteWhenStopped);
 }
 
 bool MainWindow::isEventListCollapsing() const
@@ -627,111 +756,6 @@ bool MainWindow::isEventListExpanding() const
 {
     return eventListExpanding;
 }
-
-
-
-void MainWindow::expandEventList(QDate date) {
-    eventListWidget->setDate(date);
-
-    static const int duration = 400;
-
-    // Set up size animation for event list widget
-    QPropertyAnimation *eventListSizeAnimation = new QPropertyAnimation(eventListWidget, "geometry");
-    eventListSizeAnimation->setDuration(duration);
-
-    QPropertyAnimation *calendarSizeAnimation = new QPropertyAnimation(calendarWidget->getTableView(), "geometry");
-    calendarSizeAnimation->setDuration(duration);
-
-    eventListSizeAnimation->setEasingCurve(QEasingCurve::OutQuad);
-    calendarSizeAnimation->setEasingCurve(QEasingCurve::OutQuad);
-
-    QPoint pos = stackedWidget->mapFromGlobal(calendarWidget->globalPointForDate(date));
-    cellGeometry = QRect(pos, calendarWidget->cellSize());
-    if (stackGeometry.isNull()) {
-        stackGeometry = calendarWidget->getTableView()->geometry();
-    }
-
-    QRect explosionRect = calculateExplosionRect(date);
-
-    // expand from cell to full size
-    eventListSizeAnimation->setStartValue(cellGeometry);
-    eventListSizeAnimation->setEndValue(stackGeometry);
-
-    // expand from full size to massive size to give the effect of exploding
-    calendarSizeAnimation->setStartValue(calendarWidget->getTableView()->geometry());
-    calendarSizeAnimation->setEndValue(explosionRect);
-
-    // Disable scrollbars temporarily
-    eventListWidget->getScrollArea()->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    eventListWidget->getScrollArea()->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-
-    // Re-enable scrollbars when the animation finishes
-    connect(calendarSizeAnimation, &QPropertyAnimation::finished, this, [=]{
-        eventListWidget->getScrollArea()->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-        eventListWidget->getScrollArea()->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-        calendarWidget->hide();
-        eventListExpanding = false;
-    });
-
-
-    QParallelAnimationGroup *group = new QParallelAnimationGroup(this);
-    group->addAnimation(eventListSizeAnimation);
-    group->addAnimation(calendarSizeAnimation);
-
-    calendarWidget->grabAspectRatio();
-
-    QTimer::singleShot(0, this, [=]{
-        stackedWidget->setCurrentWidget(eventListWidget);
-        calendarWidget->show();
-        eventListExpanding = true;
-        eventListCollapsing = false;
-        group->start(QPropertyAnimation::DeleteWhenStopped);
-    });
-}
-
-
-void MainWindow::collapseEventList() {
-    static const int duration = 300;
-
-    // Set up size animation for event list widget
-    QPropertyAnimation *eventListSizeAnimation = new QPropertyAnimation(eventListWidget, "geometry");
-    eventListSizeAnimation->setDuration(duration);
-
-    QPropertyAnimation *calendarSizeAnimation = new QPropertyAnimation(calendarWidget->getTableView(), "geometry");
-    calendarSizeAnimation->setDuration(duration);
-
-    eventListSizeAnimation->setEasingCurve(QEasingCurve::OutQuad);
-    calendarSizeAnimation->setEasingCurve(QEasingCurve::OutQuad);
-
-    eventListSizeAnimation->setStartValue(eventListWidget->geometry());
-    eventListSizeAnimation->setEndValue(cellGeometry);
-
-    calendarSizeAnimation->setStartValue(calendarWidget->getTableView()->geometry());
-    calendarSizeAnimation->setEndValue(stackGeometry);
-
-    // Temporarily disable scrollbars
-    eventListWidget->getScrollArea()->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    eventListWidget->getScrollArea()->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-
-    // Re-enable scrollbars and switch widgets when the animation finishes
-    connect(eventListSizeAnimation, &QPropertyAnimation::finished, this, [=]{
-        eventListWidget->getScrollArea()->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-        eventListWidget->getScrollArea()->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-        stackedWidget->setCurrentWidget(calendarWidget); // Switch back to the calendar widget
-        eventListCollapsing = false;
-    });
-
-    QParallelAnimationGroup *group = new QParallelAnimationGroup(this);
-    group->addAnimation(eventListSizeAnimation);
-    group->addAnimation(calendarSizeAnimation);
-
-    calendarWidget->show();
-    eventListExpanding = false;
-    eventListCollapsing = true;
-    group->start(QPropertyAnimation::DeleteWhenStopped);
-}
-
-
 
 
 

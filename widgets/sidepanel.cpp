@@ -1,4 +1,4 @@
-#include "SidePanel.h"
+#include "sidepanel.h"
 #include "../mainwindow.h"
 #include <QPushButton>
 #include <QVBoxLayout>

@@ -82,6 +82,8 @@ CalendarWidget::CalendarWidget(QWidget *parent) : QCalendarWidget(parent) {
 
     setContextMenuPolicy(Qt::CustomContextMenu);
     connect(this, &CalendarWidget::customContextMenuRequested, this, &CalendarWidget::handleContextMenuRequested);
+
+    connect(this, &CalendarWidget::currentPageChanged, this, &CalendarWidget::cacheInitialCellGeometry);
 }
 
 void CalendarWidget::paintCell(QPainter *painter, const QRect &rect, QDate date) const {
@@ -95,16 +97,34 @@ void CalendarWidget::paintCell(QPainter *painter, const QRect &rect, QDate date)
 
     painter->setRenderHint(QPainter::Antialiasing);
 
+    bool isToday = date == QDate::currentDate();
     bool isSelected = selectedDate() == date;
     bool isDarkMode = MainWindow::self()->isDarkModeOn();
     QColor textColor;
     QColor dotColor;
     if (isDarkMode) {
-        textColor = isSelected ? MainWindow::darkColor : MainWindow::lightColor;
-        dotColor = isSelected ? MainWindow::darkMidColor : MainWindow::lightMidColor;
+        textColor = isToday ? MainWindow::darkColor : MainWindow::lightColor;
+        dotColor = isToday ? MainWindow::darkMidColor : MainWindow::lightMidColor;
     } else {
-        textColor = isSelected ? MainWindow::lightColor : MainWindow::darkColor;
-        dotColor = isSelected ? MainWindow::lightMidColor : MainWindow::darkMidColor;
+        textColor = isToday ? MainWindow::lightColor : MainWindow::darkColor;
+        dotColor = isToday ? MainWindow::lightMidColor : MainWindow::darkMidColor;
+    }
+
+
+    // paint background for current date
+    bool paintBackground = false;
+    if (isToday) {
+        paintBackground = true;
+        if (isSelected && (MainWindow::self()->isEventListExpanding() || MainWindow::self()->isEventListCollapsing())) {
+            paintBackground = false;
+        }
+    }
+    if (paintBackground) {
+        painter->save();
+        painter->setBrush(isDarkMode ? MainWindow::lightColor : MainWindow::darkColor);
+        painter->setPen(Qt::NoPen);
+        painter->drawRect(rect);
+        painter->restore();
     }
 
     if (CalendarEventManager::self()->getEventsForDate(date).size() > 0) {
@@ -160,14 +180,102 @@ bool CalendarWidget::eventFilter(QObject *watched, QEvent *event)
     return QCalendarWidget::eventFilter(watched, event);
 }
 
+bool CalendarWidget::event(QEvent *event)
+{
+    switch (event->type()) {
+//    case QEvent::Show:
+    case QEvent::Resize:
+        cacheInitialCellGeometry();
+        break;
+    default:
+        break;
+    }
+
+    return QCalendarWidget::event(event);
+}
+
+QRect CalendarWidget::getTableViewInitialGeometry() const
+{
+    return tableViewInitialGeometry;
+}
+
+QRect CalendarWidget::getCurrentCellRectForDate(QDate date)
+{
+    // calculated now
+
+    if (date.month() != monthShown() || date.year() != yearShown()) {
+        // Date is not in the currently shown month/year, return center of the widget
+        return QRect();
+    }
+
+    const QTableView* const view = findChild<const QTableView*>();
+    Q_ASSERT(view);
+    const QAbstractItemModel* const model = view->model();
+    const int startCol = verticalHeaderFormat() == QCalendarWidget::NoVerticalHeader ? 0 : 1;
+    const int startRow = horizontalHeaderFormat() == QCalendarWidget::NoHorizontalHeader ? 0 : 1;
+
+    QModelIndex firstIndex;
+    bool firstFound=false;
+    for(int i=startRow, maxI=model->rowCount();!firstFound && i<maxI;++i){
+        for(int j=startCol, maxJ=model->columnCount();!firstFound && j<maxJ;++j){
+            firstIndex = model->index(i,j);
+            if(firstIndex.data().toInt()==1)
+                firstFound =true;
+        }
+    }
+    const int lastDayMonth = QDate(yearShown(),monthShown(),1).addMonths(1).addDays(-1).day();
+    bool lastFound=false;
+    QModelIndex lastIndex;
+    for(int i=model->rowCount()-1, minI=firstIndex.row();!lastFound && i>=minI;--i){
+        for(int j=model->columnCount()-1;!lastFound && j>=startCol;--j){
+            lastIndex= model->index(i,j);
+            if(lastIndex.data().toInt()==lastDayMonth)
+                lastFound=true;
+        }
+    }
+
+    // Now that we have the range, find the specific cell for the date
+    for (int row = firstIndex.row(); row <= lastIndex.row(); ++row) {
+        for (int col = startCol; col < model->columnCount(); ++col) {
+            QModelIndex index = model->index(row, col);
+            if (!index.isValid()) continue;
+
+            int indexDay = index.data().toInt();
+            if (indexDay == date.day()) {
+                if (row == firstIndex.row() && indexDay > 7) continue;
+
+                QRect cellRect = view->visualRect(index);
+                cellRect.moveTopLeft(view->viewport()->mapToGlobal(cellRect.topLeft()));
+
+                return cellRect;
+            }
+        }
+    }
+
+    // Date was not found within the month/year shown, return center of the widget
+    return QRect();
+}
+
+QRect CalendarWidget::getInitialCellRectForDate(QDate date)
+{
+    // from map
+
+    return QRect(dateToInitialGlobalPointMap.value(date), initialCellSize);
+}
+
+QPoint CalendarWidget::getInitialGlobalPointFromDate(QDate date)
+{
+    return dateToInitialGlobalPointMap.value(date);
+}
+
+QPoint CalendarWidget::getInitialLocalPointFromDate(QDate date)
+{
+    return dateToInitialLocalPointMap.value(date);
+}
+
 QTableView *CalendarWidget::getTableView() const
 {
     return tableView;
-}
-
-QWidget *CalendarWidget::getCellViewWidget() const
-{
-    return cellViewWidget;
 }
 
 void CalendarWidget::handleContextMenuRequested(const QPoint &pos) {
@@ -241,12 +349,13 @@ QDate CalendarWidget::dateAt(const QPoint &pos)
     return date;
 }
 
-QPoint CalendarWidget::globalPointForDate(const QDate &date) const {
-    if (date.month() != monthShown() || date.year() != yearShown()) {
-        // Date is not in the currently shown month/year, return center of the widget
-        return QPoint(width() / 2, height() / 2);
-    }
+bool CalendarWidget::isDateInCurrentMonth(const QDate &date) const
+{
+    return date.month() == monthShown() && date.year() == yearShown();
+}
 
+void CalendarWidget::cacheInitialCellGeometry()
+{
     const QTableView* const view = findChild<const QTableView*>();
     Q_ASSERT(view);
     const QAbstractItemModel* const model = view->model();
@@ -273,6 +382,15 @@ QPoint CalendarWidget::globalPointForDate(const QDate &date) const {
         }
     }
 
+
+    QRect cellRect = view->visualRect(firstIndex);
+    initialCellSize = cellRect.size();
+
+    tableViewInitialGeometry = view->geometry();
+
+    dateToInitialGlobalPointMap.clear();
+    dateToInitialLocalPointMap.clear();
+
     // Now that we have the range, find the specific cell for the date
     for (int row = firstIndex.row(); row <= lastIndex.row(); ++row) {
         for (int col = startCol; col < model->columnCount(); ++col) {
@@ -280,62 +398,18 @@ QPoint CalendarWidget::globalPointForDate(const QDate &date) const {
             if (!index.isValid()) continue;
 
             int indexDay = index.data().toInt();
-            if (indexDay == date.day()) {
-                if (row == firstIndex.row() && indexDay > 7) continue;
+            if (row == firstIndex.row() && indexDay > 7) continue;
+            if (row == lastIndex.row() && indexDay <= 7) continue;
 
-                QRect cellRect = view->visualRect(index);
-                QPoint cellCenter = cellRect.topLeft();
+            QRect cellRect = view->visualRect(index);
+            QPoint cellTopLeft = cellRect.topLeft();
 
-                return view->viewport()->mapToGlobal(cellCenter);
-            }
+            QDate date(yearShown(), monthShown(), indexDay);
+
+            dateToInitialLocalPointMap.insert(date, view->viewport()->mapTo(view, cellTopLeft));
+            dateToInitialGlobalPointMap.insert(date, view->viewport()->mapToGlobal(cellTopLeft));
         }
     }
-
-    // Date was not found within the month/year shown, return center of the widget
-    return QPoint(width() / 2, height() / 2);
-}
-
-QPoint CalendarWidget::centerCellPointForDate(const QDate &date)
-{
-    auto p = mapFromGlobal(globalPointForDate(date));
-
-    p.rx() += cellSize().width() / 2;
-    p.ry() += cellSize().height() / 2;
-
-    return p;
-}
-
-QRect CalendarWidget::cellRectForDate(const QDate &date)
-{
-    auto p = mapFromGlobal(globalPointForDate(date));
-
-    return QRect(p, cellSize());
-}
-
-QSize CalendarWidget::cellSize()
-{
-    const QTableView* const view = findChild<const QTableView*>();
-    Q_ASSERT(view);
-    const QAbstractItemModel* const model = view->model();
-    const int startCol = verticalHeaderFormat() == QCalendarWidget::NoVerticalHeader ? 0 : 1;
-    const int startRow = horizontalHeaderFormat() == QCalendarWidget::NoHorizontalHeader ? 0 : 1;
-
-    QModelIndex index = model->index(startRow,startCol);
-    if (!index.isValid()) return QSize();
-
-    QRect cellRect = view->visualRect(index);
-    return cellRect.size();
-}
-
-
-bool CalendarWidget::isDateInCurrentMonth(const QDate &date) const
-{
-    return date.month() == monthShown() && date.year() == yearShown();
-}
-
-void CalendarWidget::grabAspectRatio()
-{
-    aspectRatio = (double)tableView->width() / (double)tableView->height();
 }
 
 

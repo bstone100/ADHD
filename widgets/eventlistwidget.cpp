@@ -1,4 +1,4 @@
-#include "EventListWidget.h"
+#include "eventlistwidget.h"
 #include <QHBoxLayout>
 #include <QDateTime>
 #include "../calendareventmanager.h"
@@ -98,19 +98,6 @@ QScrollArea *EventListWidget::getScrollArea() const
 
 bool EventListWidget::event(QEvent *event)
 {
-    switch (event->type()) {
-    case QEvent::MouseButtonRelease:
-        // if expanding then collapse
-        if (MainWindow::self()->isEventListExpanding()) {
-            MainWindow::self()->collapseEventList();
-        } else if (MainWindow::self()->isEventListCollapsing()) {
-            MainWindow::self()->expandEventList(currentDate);
-        }
-        break;
-    default:
-        break;
-    }
-
     return QWidget::event(event);
 }
 
