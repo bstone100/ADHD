@@ -29,11 +29,6 @@ QAbstractButton:pressed {
     color: white; /* Text color for pressed state */
 }
 
-QAbstractButton:disabled {
-    background-color: #5A4EA6; /* Background color for disabled state */
-    color: #A095C7; /* Text color for disabled state */
-}
-
 QComboBox {
     border: 2px solid #F2E9FF; /* Border color */
     border-radius: 5px;

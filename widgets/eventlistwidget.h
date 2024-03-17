@@ -24,11 +24,7 @@ public:
 
     QDate getCurrentDate() const;
 
-
     QScrollArea *getScrollArea() const;
-
-signals:
-    void backButtonClicked();
 
 protected:
     bool event(QEvent *event) override;
@@ -39,8 +35,6 @@ private:
     QList<CalendarEvent> currentEvents;
     QVBoxLayout *eventsLayout;
     QLabel *dateLabel;
-    QLabel *backLabel;
-    SvgButton *backButton;
     QScrollArea *scrollArea;
 
 };

@@ -6,8 +6,10 @@
 #include <QMap>
 #include <QPainter>
 #include "QtWidgets/qtableview.h"
+#include "QToolButton"
 
 class CalendarEvent;
+class SvgButton;
 
 class CalendarWidget : public QCalendarWidget {
     Q_OBJECT
@@ -35,6 +37,10 @@ public:
     QPoint getInitialGlobalPointFromDate(QDate date);
     QPoint getInitialLocalPointFromDate(QDate date);
 
+    void setNavigationButtonsEnabled(bool enabled);
+    void handleEventListShown();
+    void handleEventListHidden();
+
 protected:
     void paintCell(QPainter *painter, const QRect &rect, QDate date) const override;
     bool eventFilter(QObject *watched, QEvent *event) override;
@@ -42,6 +48,14 @@ protected:
 
 private:
     QTableView *tableView;
+
+    QLayout *topLayout;
+    QToolButton *monthDropDown;
+    QToolButton *yearEditBox;
+    SvgButton *prevButton;
+    SvgButton *nextButton;
+
+    bool eventListVisible;
 
     QDate pressedDate;
 

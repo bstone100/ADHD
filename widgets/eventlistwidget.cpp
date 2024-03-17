@@ -3,29 +3,12 @@
 #include <QDateTime>
 #include "../calendareventmanager.h"
 #include "svgbutton.h"
-#include "../mainwindow.h"
 
 EventListWidget::EventListWidget(QWidget *parent) : QWidget(parent) {
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(0,0,0,0);
 
     setAttribute(Qt::WA_StyledBackground);
-
-    // Top layout with back button aligned to the left
-    QHBoxLayout *topLayout = new QHBoxLayout();
-
-    backButton = new SvgButton(this);
-    backButton->setSvgPath(":/images/leftArrow.svg");
-    backButton->setIconSize(QSize(30,30));
-    backButton->setFixedSize(90, 50);
-    backButton->setUsingAppColors(true);
-    topLayout->addWidget(backButton);
-
-    backLabel = new QLabel();
-//    topLayout->addWidget(backLabel);
-
-    topLayout->addStretch(); // This pushes the backButton to the left
-    mainLayout->addLayout(topLayout);
 
     // Layout for centering the date label
     QHBoxLayout *dateLayout = new QHBoxLayout();
@@ -34,7 +17,6 @@ EventListWidget::EventListWidget(QWidget *parent) : QWidget(parent) {
     dateLabel->installEventFilter(this);
     dateLabel->setAlignment(Qt::AlignCenter); // Ensure text is centered in the label
     dateLayout->addWidget(dateLabel, 0, Qt::AlignCenter); // Add the dateLabel to the layout with centered alignment
-    mainLayout->addLayout(dateLayout); // Add date layout below the top layout
 
     scrollArea = new QScrollArea(this);
     QWidget *scrollAreaContent = new QWidget();
@@ -45,18 +27,13 @@ EventListWidget::EventListWidget(QWidget *parent) : QWidget(parent) {
     eventsLayout = new QVBoxLayout(scrollAreaContent);
     scrollAreaContent->setLayout(eventsLayout);
 
+    mainLayout->addLayout(dateLayout); // Add date layout below the top layout
     mainLayout->addWidget(scrollArea);
-
-    connect(backButton, &QPushButton::clicked, this, [&]() {
-        // Signal to be connected for going back to the calendar
-        emit backButtonClicked();
-    });
 }
 
 void EventListWidget::setDate(const QDate &date) {
     currentDate = date;
     dateLabel->setText(currentDate.toString("dddd, MMMM d, yyyy"));
-    backLabel->setText(currentDate.toString("MMMM"));
     updateEvents();
 }
 

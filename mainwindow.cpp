@@ -221,14 +221,12 @@ MainWindow::MainWindow(QWidget *parent)
     eventListSnapshot = new QLabel(stackedWidget);
     eventListSnapshot->setScaledContents(true);
     eventListSnapshot->setStyleSheet("border: none; padding: 0px; margin: 0px; background: transparent;");
-//    eventListSnapshot->installEventFilter(this);
 
     stackedWidget->addWidget(calendarWidget);
     stackedWidget->addWidget(eventListWidget);
     stackedWidget->addWidget(eventListSnapshot);
 
     connect(calendarWidget, &QCalendarWidget::clicked, this, &MainWindow::expandEventList);
-    connect(eventListWidget, &EventListWidget::backButtonClicked, this, &MainWindow::collapseEventList);
 
 
     // today button
@@ -444,11 +442,11 @@ void MainWindow::setDarkMode(bool isDarkMode)
     }
 
     if (isDarkMode) {
-        SvgButton::setAppColors(lightColor, darkMidColor, lightColor, darkMidColor);
+        SvgButton::setAppColors(lightColor, lightColor, lightColor, darkMidColor);
         audioRecorder->getLevelWidget()->setFillColor(lightColor);
         assistantLevelWidget->setFillColor(darkMidColor);
     } else {
-        SvgButton::setAppColors(darkColor, lightMidColor, darkColor, lightMidColor);
+        SvgButton::setAppColors(darkColor, darkColor, darkColor, lightMidColor);
         audioRecorder->getLevelWidget()->setFillColor(darkColor);
         assistantLevelWidget->setFillColor(lightMidColor);
     }
@@ -668,8 +666,13 @@ void MainWindow::expandEventList(QDate date) {
 
     // Re-enable scrollbars when the animation finishes
     connect(calendarSizeAnimation, &QPropertyAnimation::finished, this, [=]{
-        stackedWidget->setCurrentWidget(eventListWidget);
-        calendarWidget->hide();
+        // hide calendar tool bar buttons and switch functionality of back button
+        calendarWidget->setNavigationButtonsEnabled(true);
+        calendarWidget->handleEventListShown();
+        stackedWidget->setCurrentWidget(calendarWidget);
+        eventListWidget->setGeometry(eventListSnapshot->geometry());
+        eventListWidget->raise();
+        eventListWidget->show();
         eventListExpanding = false;
     });
 
@@ -677,20 +680,14 @@ void MainWindow::expandEventList(QDate date) {
     group->addAnimation(eventListSizeAnimation);
     group->addAnimation(calendarSizeAnimation);
 
-    eventListSnapshot->hide();
-    eventListWidget->setGeometry(calendarWidget->getTableViewInitialGeometry());
-    QPixmap pixmap(eventListWidget->size());
-    eventListWidget->render(&pixmap);
-    eventListSnapshot->setPixmap(pixmap);
-    eventListSnapshot->show();
+    prepareEventListSnapshot();
 
-    QTimer::singleShot(0, this, [=]{
-        stackedWidget->setCurrentWidget(eventListSnapshot);
-        calendarWidget->show();
-        eventListExpanding = true;
-        eventListCollapsing = false;
-        group->start(QPropertyAnimation::DeleteWhenStopped);
-    });
+    calendarWidget->setNavigationButtonsEnabled(false);
+    stackedWidget->setCurrentWidget(eventListSnapshot);
+    calendarWidget->show();
+    eventListExpanding = true;
+    eventListCollapsing = false;
+    group->start(QPropertyAnimation::DeleteWhenStopped);
 }
 
 
@@ -725,6 +722,8 @@ void MainWindow::collapseEventList() {
 
     // Re-enable scrollbars and switch widgets when the animation finishes
     connect(eventListSizeAnimation, &QPropertyAnimation::finished, this, [=]{
+        calendarWidget->setNavigationButtonsEnabled(true);
+        calendarWidget->handleEventListHidden();
         stackedWidget->setCurrentWidget(calendarWidget); // Switch back to the calendar widget
         eventListCollapsing = false;
     });
@@ -733,18 +732,25 @@ void MainWindow::collapseEventList() {
     group->addAnimation(eventListSizeAnimation);
     group->addAnimation(calendarSizeAnimation);
 
+    prepareEventListSnapshot();
+
+    eventListWidget->hide();
+    calendarWidget->setNavigationButtonsEnabled(false);
+    stackedWidget->setCurrentWidget(eventListSnapshot);
+    calendarWidget->show();
+    eventListExpanding = false;
+    eventListCollapsing = true;
+    group->start(QPropertyAnimation::DeleteWhenStopped);
+}
+
+void MainWindow::prepareEventListSnapshot()
+{
     eventListSnapshot->hide();
     eventListWidget->setGeometry(calendarWidget->getTableViewInitialGeometry());
     QPixmap pixmap(eventListWidget->size());
     eventListWidget->render(&pixmap);
     eventListSnapshot->setPixmap(pixmap);
     eventListSnapshot->show();
-
-    stackedWidget->setCurrentWidget(eventListSnapshot);
-    calendarWidget->show();
-    eventListExpanding = false;
-    eventListCollapsing = true;
-    group->start(QPropertyAnimation::DeleteWhenStopped);
 }
 
 bool MainWindow::isEventListCollapsing() const

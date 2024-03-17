@@ -8,7 +8,6 @@
 #include "qmenu.h"
 #include "../mainwindow.h"
 #include "QHeaderView"
-#include "QToolButton"
 #include "sidepanel.h"
 #include "svgbutton.h"
 
@@ -29,23 +28,27 @@ CalendarWidget::CalendarWidget(QWidget *parent) : QCalendarWidget(parent) {
     cellViewWidget = findChild<QWidget *>("qt_scrollarea_viewport");
     cellViewWidget->installEventFilter(this);
 
+    eventListVisible = false;
+
 
 //    auto childWidgets = findChildren<QWidget *>();
 //    qDebug() << childWidgets;
 //    qt_calendar_prevmonth qt_calendar_nextmonth qt_calendar_monthbutton qt_calendar_yearbutton
 
-    QToolButton *monthDropDown = findChild<QToolButton *>("qt_calendar_monthbutton");
+    monthDropDown = findChild<QToolButton *>("qt_calendar_monthbutton");
     monthDropDown->setStyleSheet("QToolButton::menu-indicator { image: none; }");
     monthDropDown->setCursor(Qt::PointingHandCursor);
+    monthDropDown->installEventFilter(this);
 
-    QToolButton *yearEditBox = findChild<QToolButton *>("qt_calendar_yearbutton");
+    yearEditBox = findChild<QToolButton *>("qt_calendar_yearbutton");
     yearEditBox->setStyleSheet("QToolButton::menu-indicator { image: none; }");
     yearEditBox->setCursor(Qt::PointingHandCursor);
+    yearEditBox->installEventFilter(this);
 
     QAbstractButton *prevMonth = findChild<QAbstractButton *>("qt_calendar_prevmonth");
-    auto layout = prevMonth->parentWidget()->layout();
+    topLayout = prevMonth->parentWidget()->layout();
 
-    SvgButton *prevButton = new SvgButton();
+    prevButton = new SvgButton();
     prevButton->setSvgPath(":/images/leftArrow.svg");
     prevButton->setIconSize(QSize(30,30));
     prevButton->setFixedSize(90, 50);
@@ -55,20 +58,21 @@ CalendarWidget::CalendarWidget(QWidget *parent) : QCalendarWidget(parent) {
 
     QAbstractButton *nextMonth = findChild<QAbstractButton *>("qt_calendar_nextmonth");
 
-    SvgButton *nextButton = new SvgButton();
+    nextButton = new SvgButton();
     nextButton->setSvgPath(":/images/rightArrow.svg");
     nextButton->setIconSize(QSize(30,30));
     nextButton->setFixedSize(90, 50);
     nextButton->setUsingAppColors(true);
+    nextButton->installEventFilter(this);
 
     connect(nextButton, &QPushButton::clicked, this, &QCalendarWidget::showNextMonth);
 
-    layout->replaceWidget(prevMonth, prevButton);
-    layout->replaceWidget(nextMonth, nextButton);
+    topLayout->replaceWidget(prevMonth, prevButton);
+    topLayout->replaceWidget(nextMonth, nextButton);
 
-    layout->removeWidget(prevMonth);
+    topLayout->removeWidget(prevMonth);
     prevMonth->setParent(NULL);
-    layout->removeWidget(nextMonth);
+    topLayout->removeWidget(nextMonth);
     nextMonth->setParent(NULL);
 
     QTextCharFormat format = weekdayTextFormat(Qt::Monday);
@@ -177,6 +181,16 @@ bool CalendarWidget::eventFilter(QObject *watched, QEvent *event)
         break;
     }
 
+
+    if (event->type() == QEvent::Paint) {
+        if (watched == monthDropDown || watched == yearEditBox || watched == nextButton) {
+            if (eventListVisible) {
+                event->ignore();
+                return true;
+            }
+        }
+    }
+
     return QCalendarWidget::eventFilter(watched, event);
 }
 
@@ -271,6 +285,42 @@ QPoint CalendarWidget::getInitialGlobalPointFromDate(QDate date)
 QPoint CalendarWidget::getInitialLocalPointFromDate(QDate date)
 {
     return dateToInitialLocalPointMap.value(date);
+}
+
+void CalendarWidget::setNavigationButtonsEnabled(bool enabled)
+{
+    prevButton->setEnabled(enabled);
+    monthDropDown->setEnabled(enabled);
+    yearEditBox->setEnabled(enabled);
+    nextButton->setEnabled(enabled);
+}
+
+void CalendarWidget::handleEventListShown()
+{
+    eventListVisible = true;
+
+    monthDropDown->setEnabled(false);
+    yearEditBox->setEnabled(false);
+    nextButton->setEnabled(false);
+
+    disconnect(prevButton, &QPushButton::clicked, this, &QCalendarWidget::showPreviousMonth);
+    connect(prevButton, &QPushButton::clicked, MainWindow::self(), &MainWindow::collapseEventList);
+}
+
+void CalendarWidget::handleEventListHidden()
+{
+    eventListVisible = false;
+
+    monthDropDown->setEnabled(true);
+    yearEditBox->setEnabled(true);
+    nextButton->setEnabled(true);
+
+    monthDropDown->update();
+    yearEditBox->update();
+    nextButton->update();
+
+    connect(prevButton, &QPushButton::clicked, this, &QCalendarWidget::showPreviousMonth);
+    disconnect(prevButton, &QPushButton::clicked, MainWindow::self(), &MainWindow::collapseEventList);
 }
 
 QTableView *CalendarWidget::getTableView() const

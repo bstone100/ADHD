@@ -113,6 +113,7 @@ private:
     EventListWidget *eventListWidget;
     QLabel *eventListSnapshot;
 
+    void prepareEventListSnapshot();
     QRect calculateExplosionRect(QDate date);
     bool eventListExpanding = false;
     bool eventListCollapsing = false;
