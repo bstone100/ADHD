@@ -226,11 +226,13 @@ MainWindow::MainWindow(QWidget *parent)
     stackedWidget->addWidget(eventListWidget);
     stackedWidget->addWidget(eventListSnapshot);
 
+    topOfStackWidget = calendarWidget;
+
     connect(calendarWidget, &QCalendarWidget::clicked, this, &MainWindow::expandEventList);
 
 
     // today button
-    SvgButton *todayButton = new SvgButton(this);
+    todayButton = new SvgButton(this);
     todayButton->setSvgPath(":/images/today.svg");
     todayButton->setIconSize(QSize(30,30));
     todayButton->setFixedSize(70, 70);
@@ -497,7 +499,10 @@ void MainWindow::loadSettings()
     restoreGeometry(settings->value("mainWindow/geometry").toByteArray());
     restoreState(settings->value("mainWindow/windowState").toByteArray());
 
-    QTimer::singleShot(5, calendarWidget, &CalendarWidget::cacheInitialCellGeometry);
+    QTimer::singleShot(5, this, [=]{
+        calendarWidget->cacheInitialCellGeometry();
+        eventListWidget->setGeometry(calendarWidget->getTableViewInitialGeometry());
+    });
 
     settingsLoaded = true;
 }
@@ -527,8 +532,17 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
     case QEvent::TouchBegin:
     case QEvent::TouchUpdate:
     case QEvent::TouchEnd:
-        // route all touch events through the side panel for now
-        SidePanel::self()->touchEvent(static_cast<QTouchEvent*>(event));
+        if (obj->objectName() != "qt_scrollarea_viewport") {
+            if (topOfStackWidget == calendarWidget || SidePanel::self()->isVisibleToUser()) {
+                // route touch events through the side panel
+                SidePanel::self()->touchEvent(static_cast<QTouchEvent*>(event));
+            } else {
+                // handle the events here
+                if (!eventListExpanding && !eventListCollapsing) {
+                    this->touchEvent(static_cast<QTouchEvent*>(event));
+                }
+            }
+        }
         break;
     default:
         break;
@@ -537,10 +551,10 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
 
     // toggle the animation
     if (obj == eventListSnapshot && event->type() == QEvent::MouseButtonRelease) {
-        if (MainWindow::self()->isEventListExpanding()) {
-            MainWindow::self()->collapseEventList();
-        } else if (MainWindow::self()->isEventListCollapsing()) {
-            MainWindow::self()->expandEventList(eventListWidget->getCurrentDate());
+        if (eventListExpanding) {
+            collapseEventList();
+        } else if (eventListCollapsing) {
+            expandEventList(eventListWidget->getCurrentDate());
         }
     }
 
@@ -657,8 +671,13 @@ void MainWindow::expandEventList(QDate date) {
     QRect explosionRect = calculateExplosionRect(date);
 
     // expand from cell to full size
-    eventListSizeAnimation->setStartValue(currentCellRect);
-    eventListSizeAnimation->setEndValue(calendarWidget->getTableViewInitialGeometry());
+    if (topOfStackWidget == eventListSnapshot) {
+        eventListSizeAnimation->setStartValue(eventListSnapshot->geometry());
+    } else {
+        eventListSizeAnimation->setStartValue(currentCellRect);
+    }
+
+    eventListSizeAnimation->setEndValue(eventListWidget->geometry());
 
     // expand from full size to massive size to give the effect of exploding
     calendarSizeAnimation->setStartValue(calendarWidget->getTableView()->geometry());
@@ -669,10 +688,14 @@ void MainWindow::expandEventList(QDate date) {
         // hide calendar tool bar buttons and switch functionality of back button
         calendarWidget->setNavigationButtonsEnabled(true);
         calendarWidget->handleEventListShown();
+        todayButton->hide();
         stackedWidget->setCurrentWidget(calendarWidget);
         eventListWidget->setGeometry(eventListSnapshot->geometry());
         eventListWidget->raise();
         eventListWidget->show();
+
+        topOfStackWidget = eventListWidget;
+
         eventListExpanding = false;
     });
 
@@ -682,9 +705,13 @@ void MainWindow::expandEventList(QDate date) {
 
     prepareEventListSnapshot();
 
+    eventListSnapshot->show();
     calendarWidget->setNavigationButtonsEnabled(false);
     stackedWidget->setCurrentWidget(eventListSnapshot);
     calendarWidget->show();
+
+    topOfStackWidget = eventListSnapshot;
+
     eventListExpanding = true;
     eventListCollapsing = false;
     group->start(QPropertyAnimation::DeleteWhenStopped);
@@ -724,7 +751,11 @@ void MainWindow::collapseEventList() {
     connect(eventListSizeAnimation, &QPropertyAnimation::finished, this, [=]{
         calendarWidget->setNavigationButtonsEnabled(true);
         calendarWidget->handleEventListHidden();
+        todayButton->show();
         stackedWidget->setCurrentWidget(calendarWidget); // Switch back to the calendar widget
+
+        topOfStackWidget = calendarWidget;
+
         eventListCollapsing = false;
     });
 
@@ -734,10 +765,14 @@ void MainWindow::collapseEventList() {
 
     prepareEventListSnapshot();
 
+    eventListSnapshot->show();
     eventListWidget->hide();
     calendarWidget->setNavigationButtonsEnabled(false);
     stackedWidget->setCurrentWidget(eventListSnapshot);
     calendarWidget->show();
+
+    topOfStackWidget = eventListSnapshot;
+
     eventListExpanding = false;
     eventListCollapsing = true;
     group->start(QPropertyAnimation::DeleteWhenStopped);
@@ -746,11 +781,9 @@ void MainWindow::collapseEventList() {
 void MainWindow::prepareEventListSnapshot()
 {
     eventListSnapshot->hide();
-    eventListWidget->setGeometry(calendarWidget->getTableViewInitialGeometry());
     QPixmap pixmap(eventListWidget->size());
     eventListWidget->render(&pixmap);
     eventListSnapshot->setPixmap(pixmap);
-    eventListSnapshot->show();
 }
 
 bool MainWindow::isEventListCollapsing() const
@@ -763,9 +796,153 @@ bool MainWindow::isEventListExpanding() const
     return eventListExpanding;
 }
 
+QWidget *MainWindow::getTopOfStackWidget() const
+{
+    return topOfStackWidget;
+}
 
 
 
+
+
+
+
+
+void MainWindow::touchEvent(QTouchEvent *event) {
+    const QList<QTouchEvent::TouchPoint> &touchPoints = event->points();
+    if (touchPoints.isEmpty()) return;
+
+    const QTouchEvent::TouchPoint &touchPoint = touchPoints.first();
+    QPoint currentTouchPoint = touchPoint.position().toPoint();
+
+    switch (event->type()) {
+    case QEvent::TouchBegin: {
+#if defined(Q_OS_IOS)
+        prepareHapticFeedback();
+#endif
+
+        isTouching = true;
+
+        dx = 0;
+        dt = 0;
+
+        stopwatch.start();
+
+        touchStartPoint = currentTouchPoint;
+        previousPoint = currentTouchPoint;
+
+        if (!calendarInterpolator) {
+            calendarInterpolator = new QPropertyAnimation(calendarWidget->getTableView(), "geometry");
+            calendarInterpolator->setEasingCurve(QEasingCurve::OutQuad);
+            calendarInterpolator->setDuration(1000);
+
+            eventListInterpolator = new QPropertyAnimation(eventListSnapshot, "geometry");
+            eventListInterpolator->setEasingCurve(QEasingCurve::OutQuad);
+            eventListInterpolator->setDuration(1000);
+        }
+        QRect currentCellRect = calendarWidget->getCurrentCellRectForDate(calendarWidget->selectedDate());
+        currentCellRect.moveTopLeft(stackedWidget->mapFromGlobal(currentCellRect.topLeft()));
+
+        QRect initialCellRect = calendarWidget->getInitialCellRectForDate(calendarWidget->selectedDate());
+        initialCellRect.moveTopLeft(stackedWidget->mapFromGlobal(initialCellRect.topLeft()));
+
+        eventListInterpolator->setStartValue(eventListWidget->geometry());
+        eventListInterpolator->setEndValue(initialCellRect);
+
+        calendarInterpolator->setStartValue(calendarWidget->getTableView()->geometry());
+        calendarInterpolator->setEndValue(calendarWidget->getTableViewInitialGeometry());
+
+        progress = 0.0;
+    }
+        break;
+    case QEvent::TouchUpdate:
+    {
+        dx = currentTouchPoint.x() - previousPoint.x();
+        dt = stopwatch.restart();
+
+        const int edgeThreshold = 30; // maximum distance from left edge to be considered a swipe
+
+        if (touchStartPoint.x() <= edgeThreshold) { // attempting to close or open
+#if defined(Q_OS_IOS)
+
+            int halfwayPos = this->width() / 2;
+            int currentPos = currentTouchPoint.x();
+
+            if (currentPos < halfwayPos && currentPos + dx >= halfwayPos) {
+                generateHapticFeedback();
+            } else if (currentPos > halfwayPos && currentPos + dx <= halfwayPos) {
+                generateHapticFeedback();
+            }
+#endif
+
+
+            if (topOfStackWidget == eventListWidget) {
+                prepareEventListSnapshot();
+
+                eventListWidget->hide();
+                eventListSnapshot->setGeometry(eventListWidget->geometry());
+                eventListSnapshot->show();
+                eventListSnapshot->raise();
+
+                topOfStackWidget = eventListSnapshot;
+            }
+
+            // go to t in animation
+            float curPos = currentTouchPoint.x() - touchStartPoint.x();
+            float availWidth = calendarWidget->getTableViewInitialGeometry().width() - touchStartPoint.x();
+            progress = qBound(0.0, curPos / availWidth, 1.0);
+
+            eventListInterpolator->setCurrentTime(progress * eventListInterpolator->duration());
+            QRect eventListGeom = eventListInterpolator->currentValue().toRect();
+            eventListSnapshot->setGeometry(eventListGeom);
+
+            calendarInterpolator->setCurrentTime(progress * calendarInterpolator->duration());
+            QRect calendarGeom = calendarInterpolator->currentValue().toRect();
+            calendarWidget->getTableView()->setGeometry(calendarGeom);
+        }
+
+        previousPoint = currentTouchPoint;
+    }
+    break;
+    case QEvent::TouchEnd:
+        previousPoint = currentTouchPoint;
+
+        isTouching = false;
+
+        handleSwipeEnd();
+        break;
+    default:
+        break;
+    }
+}
+
+void MainWindow::handleSwipeEnd() {
+
+    // a click
+    if (progress == 0.0 && previousPoint == touchStartPoint) {
+        return;
+    }
+    // a swipe that started right of the threshold
+    if (progress == 0.0 && topOfStackWidget == eventListWidget) {
+        return;
+    }
+
+    float velocity = (float)dx / (float)(dt + 1); // pixels per millisecond
+
+    const float thresholdVelocity = 0.3;
+
+    // either snap right (close event list) or snap left (don't close event list)
+    if (progress >= 0.5 || (velocity > thresholdVelocity && progress > 0.0)) {
+        collapseEventList();
+    } else {
+        expandEventList(eventListWidget->getCurrentDate());
+    }
+}
+
+bool MainWindow::getIsTouching() const
+{
+    return isTouching;
+}
 
 
 

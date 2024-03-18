@@ -13,6 +13,8 @@
 #include "QTextEdit"
 #include "QStackedWidget"
 #include "QtWidgets/qlabel.h"
+#include "qelapsedtimer.h"
+#include "qpropertyanimation.h"
 
 class OpenAIRequest;
 class AudioRecorder;
@@ -65,6 +67,10 @@ public:
     void collapseEventList();
 
 
+    QWidget *getTopOfStackWidget() const;
+
+    bool getIsTouching() const;
+
 protected:
     void closeEvent(QCloseEvent *event) override;
     void keyPressEvent(QKeyEvent *event) override;
@@ -102,6 +108,8 @@ private:
     SvgButton *recordAudioButton;
     AudioRecorder *audioRecorder;
 
+    SvgButton *todayButton;
+
     AudioLevel *assistantLevelWidget;
 
     OpenAIRequest *chatRequest;
@@ -112,11 +120,30 @@ private:
     CalendarWidget *calendarWidget;
     EventListWidget *eventListWidget;
     QLabel *eventListSnapshot;
+    QWidget *topOfStackWidget;
 
     void prepareEventListSnapshot();
     QRect calculateExplosionRect(QDate date);
     bool eventListExpanding = false;
     bool eventListCollapsing = false;
+
+
+    void touchEvent(QTouchEvent *event);
+    void handleSwipeEnd();
+
+    bool isTouching = false;
+    QPoint touchStartPoint;
+    QPoint previousPoint;
+
+    // v = x/t
+    int dx;
+    int dt;
+    qreal progress;
+
+    QElapsedTimer stopwatch;
+
+    QPropertyAnimation *calendarInterpolator = NULL;
+    QPropertyAnimation *eventListInterpolator = NULL;
 };
 
 #endif // MAINWINDOW_H

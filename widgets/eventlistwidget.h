@@ -26,6 +26,8 @@ public:
 
     QScrollArea *getScrollArea() const;
 
+    QWidget *getScrollAreaContent() const;
+
 protected:
     bool event(QEvent *event) override;
     bool eventFilter(QObject *watched, QEvent *event) override;
@@ -36,6 +38,7 @@ private:
     QVBoxLayout *eventsLayout;
     QLabel *dateLabel;
     QScrollArea *scrollArea;
+    QWidget *scrollAreaContent;
 
 };
 

@@ -205,7 +205,7 @@ void SidePanel::handleSwipeEnd() {
             expand(); // stay open
         }
     } else { // decide whether to open or stay closed (left to right swipe)
-        if (currentPos >= halfwayPos || velocity > thresholdVelocity) {
+        if (currentPos >= halfwayPos || (velocity > thresholdVelocity && currentPos > 0)) {
             expand(); // open
         } else {
             collapse(); // stay closed

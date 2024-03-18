@@ -41,6 +41,8 @@ public:
     void handleEventListShown();
     void handleEventListHidden();
 
+    QWidget *getCellViewWidget() const;
+
 protected:
     void paintCell(QPainter *painter, const QRect &rect, QDate date) const override;
     bool eventFilter(QObject *watched, QEvent *event) override;

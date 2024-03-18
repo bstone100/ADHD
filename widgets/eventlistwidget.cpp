@@ -2,7 +2,6 @@
 #include <QHBoxLayout>
 #include <QDateTime>
 #include "../calendareventmanager.h"
-#include "svgbutton.h"
 
 EventListWidget::EventListWidget(QWidget *parent) : QWidget(parent) {
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
@@ -19,7 +18,7 @@ EventListWidget::EventListWidget(QWidget *parent) : QWidget(parent) {
     dateLayout->addWidget(dateLabel, 0, Qt::AlignCenter); // Add the dateLabel to the layout with centered alignment
 
     scrollArea = new QScrollArea(this);
-    QWidget *scrollAreaContent = new QWidget();
+    scrollAreaContent = new QWidget();
     scrollAreaContent->setStyleSheet("background: transparent;");
 
     scrollArea->setWidget(scrollAreaContent);
@@ -81,6 +80,11 @@ bool EventListWidget::event(QEvent *event)
 bool EventListWidget::eventFilter(QObject *watched, QEvent *event)
 {
     return QWidget::eventFilter(watched, event);
+}
+
+QWidget *EventListWidget::getScrollAreaContent() const
+{
+    return scrollAreaContent;
 }
 
 

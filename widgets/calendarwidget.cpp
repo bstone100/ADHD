@@ -119,7 +119,7 @@ void CalendarWidget::paintCell(QPainter *painter, const QRect &rect, QDate date)
     bool paintBackground = false;
     if (isToday) {
         paintBackground = true;
-        if (isSelected && (MainWindow::self()->isEventListExpanding() || MainWindow::self()->isEventListCollapsing())) {
+        if (isSelected && (MainWindow::self()->getIsTouching() || MainWindow::self()->isEventListExpanding() || MainWindow::self()->isEventListCollapsing())) {
             paintBackground = false;
         }
     }
@@ -206,6 +206,11 @@ bool CalendarWidget::event(QEvent *event)
     }
 
     return QCalendarWidget::event(event);
+}
+
+QWidget *CalendarWidget::getCellViewWidget() const
+{
+    return cellViewWidget;
 }
 
 QRect CalendarWidget::getTableViewInitialGeometry() const
