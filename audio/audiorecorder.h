@@ -46,7 +46,7 @@ private:
     QString recordingLocation;
 
     QTimer updateLevelTimer;
-    AudioLevel *levelWidget;
+    AudioLevel *levelWidget = NULL;
 };
 
 #endif // AUDIORECORDER_H

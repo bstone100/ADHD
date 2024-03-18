@@ -17,6 +17,7 @@
 #include "qdir.h"
 #include "../mainwindow.h"
 #include "../audio/audiolevelcalculator.h"
+#include <QSslSocket>
 
 OpenAIRequest::OpenAIRequest(QObject *parent)
     : QObject(parent)
@@ -34,6 +35,8 @@ OpenAIRequest::OpenAIRequest(QObject *parent)
     , m_presencePenalty(0.0)
     , m_speed(1.0)
 {
+    qDebug() << "Device supports OpenSSL: " << QSslSocket::supportsSsl();
+
     connect(this, &OpenAIRequest::requestFinished, this, [this](const QString& generatedText) {
         m_generatedText = generatedText;
         emit generatedTextChanged();

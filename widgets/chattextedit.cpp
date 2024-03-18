@@ -1,4 +1,4 @@
-#include "ChatTextEdit.h"
+#include "chattextedit.h"
 #include <QFontMetrics>
 #include "QAbstractTextDocumentLayout"
 #include "QScroller"

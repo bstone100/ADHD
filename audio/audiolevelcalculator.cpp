@@ -1,4 +1,4 @@
-#include "AudioLevelCalculator.h"
+#include "audiolevelcalculator.h"
 #include "QtCore/qurl.h"
 #include <QAudioBuffer>
 #include <QtMath>

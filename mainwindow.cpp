@@ -22,9 +22,9 @@
 #include "QGraphicsOpacityEffect"
 #include "QParallelAnimationGroup"
 #include "QStackedLayout"
+#include "qstandardpaths.h"
 
 #if defined(Q_OS_IOS)
-#include "qstandardpaths.h"
 #include "iOS/hapticfeedback.h"
 #include "iOS/DarkModeDetector.h"
 #elif defined(Q_OS_MACOS)
@@ -55,11 +55,15 @@ MainWindow::MainWindow(QWidget *parent)
 
 
 // Preprocessor directives to check the platform
-#if defined(Q_OS_IOS)
+#if defined(Q_OS_ANDROID)
+    // Use QStandardPaths with AppDataLocation for Android to get a writable location
+    currentPath = QStandardPaths::standardLocations(QStandardPaths::AppDataLocation).value(0);
+#elif defined(Q_OS_IOS)
     currentPath = QStandardPaths::standardLocations(QStandardPaths::AppDataLocation).value(0);
 #else
     currentPath = QCoreApplication::applicationDirPath();
 #endif
+
 
     QDir dir(currentPath);
     if (!dir.exists()) {

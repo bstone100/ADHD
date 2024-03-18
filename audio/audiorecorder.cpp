@@ -30,7 +30,7 @@
 AudioRecorder::AudioRecorder()
 {
     // audio input initialization
-//    init();
+    init();
 
 // Code for platforms other than Apple's
 #if !defined(Q_OS_DARWIN)
