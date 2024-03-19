@@ -35,7 +35,7 @@ OpenAIRequest::OpenAIRequest(QObject *parent)
     , m_presencePenalty(0.0)
     , m_speed(1.0)
 {
-    qDebug() << "Device supports OpenSSL: " << QSslSocket::supportsSsl();
+//    qDebug() << "Device supports OpenSSL: " << QSslSocket::supportsSsl();
 
     connect(this, &OpenAIRequest::requestFinished, this, [this](const QString& generatedText) {
         m_generatedText = generatedText;
@@ -140,18 +140,13 @@ void OpenAIRequest::sendChatCompletionsRequest()
     requestBody.insert("frequency_penalty", m_frequencyPenalty);
     requestBody.insert("presence_penalty", m_presencePenalty);
 
-    // only the newest message should have a scenegraph
+    // only the newest user message should have a scenegraph
+    // and it gets the tools
     removeAllScenegraphs();
     auto newestMessage = m_messages.last();
-    if (newestMessage) {
-        switch (newestMessage->role()) {
-        case OpenAIMessage::Role::User:
-            newestMessage->addScenegraph();
-            requestBody.insert("tools", API::getToolsJsonArray());
-            break;
-        default:
-            break;
-        }
+    if (newestMessage && newestMessage->role() == OpenAIMessage::Role::User) {
+        newestMessage->addScenegraph();
+        requestBody.insert("tools", API::getToolsJsonArray());
     }
 
     QJsonArray messageArray;
@@ -557,6 +552,13 @@ void OpenAIRequest::removeAllInstructions()
 {
     foreach (auto message, m_messages) {
         message->removeInstructions();
+    }
+}
+
+void OpenAIRequest::removeAllTimestamps()
+{
+    foreach (auto message, m_messages) {
+        message->removeTimestamp();
     }
 }
 

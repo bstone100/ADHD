@@ -1,6 +1,7 @@
 // HapticFeedbackHelper.mm
 #import <UIKit/UIKit.h>
 #include "hapticfeedback.h"
+#include "QDebug"
 
 @interface HapticFeedbackHelper : NSObject
 + (void)prepareFeedback;

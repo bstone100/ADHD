@@ -71,6 +71,9 @@ public:
     void addInstructions();
     void removeInstructions();
 
+    void addTimestamp();
+    void removeTimestamp();
+
     QString tool_call_id() const;
     void setTool_call_id(const QString &newTool_call_id);
 
@@ -80,6 +83,8 @@ public:
     QString instructions() const;
 
     QJsonObject scenegraph() const;
+
+    QString timestamp() const;
 
 signals:
     void contentChanged();
@@ -94,8 +99,8 @@ private:
 
     Role m_role;
 
-    // cache this
     QString m_instructions;
+    QString m_timestamp;
     QJsonObject m_scenegraph;
 };
 

@@ -13,7 +13,7 @@ Category stringToCategory(const QString &categoryString) {
     if (categoryString == "Task") return Task;
     if (categoryString == "Habit") return Habit;
     if (categoryString == "Deadline") return Deadline;
-    return Task; // Default case, or throw an exception as per your error handling policy
+    return Task;
 }
 
 QColor colorForCategory(Category category) {

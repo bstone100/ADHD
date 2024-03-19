@@ -59,6 +59,7 @@ public:
 
     void removeAllScenegraphs();
     void removeAllInstructions();
+    void removeAllTimestamps();
 
     QString ttsInputText() const;
     void setTtsInputText(const QString &newTtsInputText);

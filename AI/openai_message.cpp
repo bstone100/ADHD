@@ -81,8 +81,8 @@ QString OpenAIMessage::getUserMessage()
 
 void OpenAIMessage::addScenegraph()
 {
-    m_contentObject["scenegraph"] = CalendarEventManager::self()->getJsonObject();
-    m_scenegraph = m_contentObject["scenegraph"].toObject();
+    m_scenegraph = CalendarEventManager::self()->getJsonObject();
+    m_contentObject["scenegraph"] = m_scenegraph;
 }
 
 void OpenAIMessage::removeScenegraph()
@@ -95,11 +95,11 @@ void OpenAIMessage::removeScenegraph()
 
 void OpenAIMessage::addInstructions()
 {
-    m_contentObject["instructions"] = "If the user asks about their schedule, tell them about it using information"
-                                      "from the scenegraph. Don't make any tool calls."
-                                      "Use natural language to describe dates and time.";
+    m_instructions = "If the user asks about their schedule, tell them about it using information"
+                     "from the scenegraph. Don't make any tool calls."
+                     "Use natural language to describe dates and time.";
 
-    m_instructions = m_contentObject["instructions"].toString();
+    m_contentObject["instructions"] = m_instructions;
 }
 
 void OpenAIMessage::removeInstructions()
@@ -107,6 +107,21 @@ void OpenAIMessage::removeInstructions()
     // keep the key just remove the value
     if (m_contentObject.contains("instructions")) {
         m_contentObject["instructions"] = "removed";
+    }
+}
+
+void OpenAIMessage::addTimestamp()
+{
+    QDateTime currentDateTime = QDateTime::currentDateTime();
+    m_timestamp = currentDateTime.toString("yyyy-MM-dd ddd HH:mm");
+    m_contentObject["timestamp"] = m_timestamp;
+}
+
+void OpenAIMessage::removeTimestamp()
+{
+    // keep the key just remove the value
+    if (m_contentObject.contains("timestamp")) {
+        m_contentObject["timestamp"] = "removed";
     }
 }
 
@@ -138,6 +153,11 @@ QString OpenAIMessage::instructions() const
 QJsonObject OpenAIMessage::scenegraph() const
 {
     return m_scenegraph;
+}
+
+QString OpenAIMessage::timestamp() const
+{
+    return m_timestamp;
 }
 
 

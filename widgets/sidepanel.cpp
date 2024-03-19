@@ -153,11 +153,15 @@ void SidePanel::touchEvent(QTouchEvent *event) {
         if (isPanelOpen || touchStartPoint.x() <= edgeThreshold) { // attempting to close or open
 #if defined(Q_OS_IOS)
             int halfwayPos = calculateWidth() / 2;
-            int currentPos = x() + width();
-            if (currentPos < halfwayPos && currentPos + dx >= halfwayPos) {
+            int previousPos = x() + width();
+            int currentPos = newX + width();
+
+            if (currentPos >= halfwayPos && previousPos < halfwayPos) {
                 generateHapticFeedback();
-            } else if (currentPos > halfwayPos && currentPos + dx <= halfwayPos) {
+//                qDebug() << "haptic from Left: " << currentPos << halfwayPos;
+            } else if (currentPos <= halfwayPos && previousPos > halfwayPos) {
                 generateHapticFeedback();
+//                qDebug() << "haptic from Right: " << currentPos << halfwayPos;
             }
 #endif
 

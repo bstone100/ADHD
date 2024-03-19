@@ -106,6 +106,7 @@ MainWindow::MainWindow(QWidget *parent)
     voiceSelectionComboBox = new QComboBox(SidePanel::self());
     QStringList voices = {"alloy", "echo", "fable", "onyx", "nova", "shimmer"};
     voiceSelectionComboBox->addItems(voices);
+    voiceSelectionComboBox->setCurrentIndex(0);
     connect(voiceSelectionComboBox, &QComboBox::currentTextChanged, this, [=]{
         voice = voiceSelectionComboBox->currentText();
     });
@@ -168,9 +169,6 @@ MainWindow::MainWindow(QWidget *parent)
     chatRequest->setModel("gpt-3.5-turbo-1106");
     chatRequest->setAccessToken(apiKey);
 
-    QDateTime currentDateTime = QDateTime::currentDateTime();
-    QString dateTimeStr = currentDateTime.toString("yyyy-MM-dd ddd HH:mm");
-
     QJsonObject systemPrompt;
 
     systemPrompt["prompt"] = "You are part of an app called ADHD Task Manager. The app is an improved task management app "
@@ -179,14 +177,12 @@ MainWindow::MainWindow(QWidget *parent)
                              "Only use tools that you have been given access to."
                              "Use natural language to describe dates and time.";
 
-    QFile file(":/exampleConversation.json");
-    if (file.open(QFile::ReadOnly | QFile::Text)) {
-        QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
-        QJsonArray convo = doc.array();
-        systemPrompt["example conversation"] = convo;
-    }
-
-    systemPrompt["current date and time"] = dateTimeStr;
+//    QFile file(":/AI/exampleConversation.json");
+//    if (file.open(QFile::ReadOnly | QFile::Text)) {
+//        QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+//        QJsonArray convo = doc.array();
+//        systemPrompt["example conversation"] = convo;
+//    }
 
     chatRequest->addMessage(new OpenAIMessage(systemPrompt, OpenAIMessage::Role::System));
 
@@ -336,6 +332,7 @@ void MainWindow::sendChat()
 
     OpenAIMessage *userMessage = new OpenAIMessage("", OpenAIMessage::Role::User);
     userMessage->setUserMessage(textInputField->text());
+    userMessage->addTimestamp();
     textInputField->clear();
 
     chatRequest->addMessage(userMessage);
@@ -477,12 +474,19 @@ void MainWindow::saveSettings()
 
 void MainWindow::loadSettings()
 {
-    apiKey = settings->value("apiKey").toString();
-    isDarkMode = settings->value("isDarkMode").toBool();
-    isAutoTheme = settings->value("isAutoTheme").toBool();
-    voice = settings->value("voice").toString();
+    apiKey = settings->value("apiKey", apiKey).toString();
+    isDarkMode = settings->value("isDarkMode", false).toBool();
+    isAutoTheme = settings->value("isAutoTheme", true).toBool();
+    voice = settings->value("voice", voiceSelectionComboBox->currentText()).toString();
 
-    voiceSelectionComboBox->setCurrentText(voice);
+    int voiceIndex = voiceSelectionComboBox->findText(voice);
+    if (voiceIndex == -1) {
+        voiceSelectionComboBox->setCurrentIndex(0);
+        voice = voiceSelectionComboBox->currentText();
+    } else {
+        voiceSelectionComboBox->setCurrentIndex(voiceIndex);
+    }
+
 
     if (isAutoTheme) {
         themeComboBox->setCurrentIndex(2);
@@ -681,7 +685,7 @@ void MainWindow::expandEventList(QDate date) {
         eventListSizeAnimation->setStartValue(currentCellRect);
     }
 
-    eventListSizeAnimation->setEndValue(eventListWidget->geometry());
+    eventListSizeAnimation->setEndValue(calendarWidget->getTableViewInitialGeometry());
 
     // expand from full size to massive size to give the effect of exploding
     calendarSizeAnimation->setStartValue(calendarWidget->getTableView()->geometry());
@@ -868,14 +872,16 @@ void MainWindow::touchEvent(QTouchEvent *event) {
 
         if (touchStartPoint.x() <= edgeThreshold) { // attempting to close or open
 #if defined(Q_OS_IOS)
-
             int halfwayPos = this->width() / 2;
             int currentPos = currentTouchPoint.x();
+            int previousPos = previousPoint.x();
 
-            if (currentPos < halfwayPos && currentPos + dx >= halfwayPos) {
+            if (currentPos >= halfwayPos && previousPos < halfwayPos) {
                 generateHapticFeedback();
-            } else if (currentPos > halfwayPos && currentPos + dx <= halfwayPos) {
+//                qDebug() << "haptic from Left: " << currentPos << halfwayPos;
+            } else if (currentPos <= halfwayPos && previousPos > halfwayPos) {
                 generateHapticFeedback();
+//                qDebug() << "haptic from Right: " << currentPos << halfwayPos;
             }
 #endif
 
@@ -935,8 +941,11 @@ void MainWindow::handleSwipeEnd() {
 
     const float thresholdVelocity = 0.3;
 
+    int halfwayPos = this->width() / 2;
+    int currentPos = previousPoint.x();
+
     // either snap right (close event list) or snap left (don't close event list)
-    if (progress >= 0.5 || (velocity > thresholdVelocity && progress > 0.0)) {
+    if (currentPos >= halfwayPos || (velocity > thresholdVelocity && currentPos > 0)) {
         collapseEventList();
     } else {
         expandEventList(eventListWidget->getCurrentDate());

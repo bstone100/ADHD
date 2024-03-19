@@ -54,7 +54,8 @@ void EventListWidget::updateEvents() {
     } else {
         foreach (auto event, CalendarEventManager::self()->getEventsForDate(currentDate)) {
             // For simplicity, assuming events are already sorted by time
-            QLabel *eventLabel = new QLabel(QString("%1 - %2").arg(event.time.toString("HH:mm"), event.description), this);
+            QLabel *eventLabel = new QLabel(QString("%1  %2:  %3")
+                                .arg(event.time.toString("h:mm A"), categoryToString(event.category), event.description), this);
             eventsLayout->addWidget(eventLabel);
         }
 
