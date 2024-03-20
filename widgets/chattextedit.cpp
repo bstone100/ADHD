@@ -6,7 +6,7 @@
 ChatTextEdit::ChatTextEdit(QWidget *parent) : QTextEdit(parent) {
     connect(this, &ChatTextEdit::textChanged, this, &ChatTextEdit::updateHeight);
 
-#if defined(Q_OS_IOS)
+#if defined(Q_OS_IOS) || defined(Q_OS_ANDROID)
     QScroller* scroller = QScroller::scroller(this);
 
     QScrollerProperties properties = scroller->scrollerProperties();
@@ -30,7 +30,9 @@ void ChatTextEdit::updateHeight() {
 
     int height = qBound(minHeight, docHeight + margins, maxHeight);
 
-//    setVerticalScrollBarPolicy(height < maxHeight ? Qt::ScrollBarAlwaysOff : Qt::ScrollBarAsNeeded);
+#if !defined(Q_OS_IOS) && !defined(Q_OS_ANDROID)
+    setVerticalScrollBarPolicy(height < maxHeight ? Qt::ScrollBarAlwaysOff : Qt::ScrollBarAsNeeded);
+#endif
 
     setFixedHeight(height);
 }
@@ -56,3 +58,22 @@ void ChatTextEdit::setMinHeight(int newMinHeight)
     minHeight = newMinHeight;
     updateHeight();
 }
+
+bool ChatTextEdit::event(QEvent *e)
+{
+    switch (e->type()) {
+    case QEvent::Resize:
+        updateHeight();
+        break;
+    default:
+        break;
+    }
+
+    return QTextEdit::event(e);
+}
+
+
+
+
+
+

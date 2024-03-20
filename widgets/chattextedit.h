@@ -17,6 +17,9 @@ public:
     int getMinHeight() const;
     void setMinHeight(int newMinHeight);
 
+protected:
+    bool event(QEvent *e) override;
+
 private:
     int maxHeight;
     int minHeight;

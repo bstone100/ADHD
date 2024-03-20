@@ -2,6 +2,7 @@
 #include <QHBoxLayout>
 #include <QDateTime>
 #include "../calendareventmanager.h"
+#include "QScroller"
 
 EventListWidget::EventListWidget(QWidget *parent) : QWidget(parent) {
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
@@ -25,6 +26,18 @@ EventListWidget::EventListWidget(QWidget *parent) : QWidget(parent) {
     scrollArea->setWidgetResizable(true);
     eventsLayout = new QVBoxLayout(scrollAreaContent);
     scrollAreaContent->setLayout(eventsLayout);
+
+#if defined(Q_OS_IOS) || defined(Q_OS_ANDROID)
+    QScroller* scroller = QScroller::scroller(scrollArea);
+
+    QScrollerProperties properties = scroller->scrollerProperties();
+    properties.setScrollMetric(QScrollerProperties::DragStartDistance, 0.0);
+
+    scroller->setScrollerProperties(properties);
+    scroller->grabGesture(scrollArea, QScroller::TouchGesture);
+
+    scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+#endif
 
     mainLayout->addLayout(dateLayout); // Add date layout below the top layout
     mainLayout->addWidget(scrollArea);
