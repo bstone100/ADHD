@@ -74,6 +74,8 @@ public:
 
     bool getIsTouching() const;
 
+    void fadeInWidget(QWidget *widget, int duration = 500);
+    void fadeOutWidget(QWidget *widget, int duration = 500);
 protected:
     void closeEvent(QCloseEvent *event) override;
     void keyPressEvent(QKeyEvent *event) override;

@@ -34,7 +34,6 @@ QGroupBox {
     border-radius: 5px;
     margin-top: 1.5ex; /* leave space at the top for the title */
     font-size: 17px;
-    font-style: italic;
 }
 
 QGroupBox::title {
@@ -94,14 +93,14 @@ QMenu::item:disabled {
     background-color: transparent; /* Transparent background for disabled items */
 }
 
-QToolButton {
+QToolButton, QToolButton:hover {
     font-weight: bold;
     border: none;
     background-color: transparent;
     color: #3D315B;
 }
 
-QToolButton:hover, QToolButton:pressed {
+QToolButton:pressed, QToolButton:disabled {
     font-weight: bold;
     border: none;
     background-color: transparent;
@@ -139,7 +138,7 @@ QScrollArea {
     border: none;
 }
 
-EventListWidget {
+EventListWidget, #eventListSnapshot {
     background: #F2E9FF;
 }
 

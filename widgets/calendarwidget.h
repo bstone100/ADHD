@@ -37,11 +37,14 @@ public:
     QPoint getInitialGlobalPointFromDate(QDate date);
     QPoint getInitialLocalPointFromDate(QDate date);
 
-    void setNavigationButtonsEnabled(bool enabled);
-    void handleEventListShown();
-    void handleEventListHidden();
+    void makeBackButtonShowPrevMonth(bool showPreviousMonth);
+
+    void fadeOutNavigationButtons(int duration = 500);
+    void fadeInNavigationButtons(int duration = 500);
 
     QWidget *getCellViewWidget() const;
+
+    SvgButton *getPrevButton() const;
 
 protected:
     void paintCell(QPainter *painter, const QRect &rect, QDate date) const override;

@@ -178,7 +178,6 @@ void SvgButton::paintEvent(QPaintEvent *event) {
     QPainter painter(this);
 
     // Set the fill color for the SVG
-    painter.setBrush(Qt::red);
     painter.setPen(Qt::NoPen);
 
     // Calculate the center position for the icon
@@ -193,6 +192,26 @@ void SvgButton::paintEvent(QPaintEvent *event) {
 QColor SvgButton::appPressedColor()
 {
     return s_pressedColor;
+}
+
+QColor SvgButton::activeDefaultColor()
+{
+    return usingAppColors ? SvgButton::s_defaultColor : m_defaultColor;
+}
+
+QColor SvgButton::activeDisabledColor()
+{
+    return usingAppColors ? SvgButton::s_disabledColor : m_disabledColor;
+}
+
+QColor SvgButton::activeHoverColor()
+{
+    return usingAppColors ? SvgButton::s_hoverColor : m_hoverColor;
+}
+
+QColor SvgButton::activePressedColor()
+{
+    return usingAppColors ? SvgButton::s_pressedColor : m_pressedColor;
 }
 
 QColor SvgButton::appHoverColor()
@@ -228,14 +247,14 @@ void SvgButton::updateColor()
 
         if (isEnabled()) {
             if (leftButtonPressed && cursorOverWidget) {
-                newColor = usingAppColors ? SvgButton::s_pressedColor : m_pressedColor;
+                newColor = activePressedColor();
             } else if (cursorOverWidget) {
-                newColor = usingAppColors ? SvgButton::s_hoverColor : m_hoverColor;
+                newColor = activeHoverColor();
             } else {
-                newColor = usingAppColors ? SvgButton::s_defaultColor : m_defaultColor;
+                newColor = activeDefaultColor();
             }
         } else {
-            newColor = usingAppColors ? SvgButton::s_disabledColor : m_disabledColor;
+            newColor = activeDisabledColor();
         }
     }
 

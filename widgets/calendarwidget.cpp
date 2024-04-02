@@ -208,6 +208,11 @@ bool CalendarWidget::event(QEvent *event)
     return QCalendarWidget::event(event);
 }
 
+SvgButton *CalendarWidget::getPrevButton() const
+{
+    return prevButton;
+}
+
 QWidget *CalendarWidget::getCellViewWidget() const
 {
     return cellViewWidget;
@@ -292,40 +297,29 @@ QPoint CalendarWidget::getInitialLocalPointFromDate(QDate date)
     return dateToInitialLocalPointMap.value(date);
 }
 
-void CalendarWidget::setNavigationButtonsEnabled(bool enabled)
+void CalendarWidget::makeBackButtonShowPrevMonth(bool showPreviousMonth)
 {
-    prevButton->setEnabled(enabled);
-    monthDropDown->setEnabled(enabled);
-    yearEditBox->setEnabled(enabled);
-    nextButton->setEnabled(enabled);
+    if (showPreviousMonth) {
+        connect(prevButton, &QPushButton::clicked, this, &QCalendarWidget::showPreviousMonth);
+        disconnect(prevButton, &QPushButton::clicked, MainWindow::self(), &MainWindow::collapseEventList);
+    } else {
+        disconnect(prevButton, &QPushButton::clicked, this, &QCalendarWidget::showPreviousMonth);
+        connect(prevButton, &QPushButton::clicked, MainWindow::self(), &MainWindow::collapseEventList);
+    }
 }
 
-void CalendarWidget::handleEventListShown()
+void CalendarWidget::fadeOutNavigationButtons(int duration)
 {
-    eventListVisible = true;
-
-    monthDropDown->setEnabled(false);
-    yearEditBox->setEnabled(false);
-    nextButton->setEnabled(false);
-
-    disconnect(prevButton, &QPushButton::clicked, this, &QCalendarWidget::showPreviousMonth);
-    connect(prevButton, &QPushButton::clicked, MainWindow::self(), &MainWindow::collapseEventList);
+    MainWindow::self()->fadeOutWidget(monthDropDown, duration);
+    MainWindow::self()->fadeOutWidget(yearEditBox, duration);
+    MainWindow::self()->fadeOutWidget(nextButton, duration);
 }
 
-void CalendarWidget::handleEventListHidden()
+void CalendarWidget::fadeInNavigationButtons(int duration)
 {
-    eventListVisible = false;
-
-    monthDropDown->setEnabled(true);
-    yearEditBox->setEnabled(true);
-    nextButton->setEnabled(true);
-
-    monthDropDown->update();
-    yearEditBox->update();
-    nextButton->update();
-
-    connect(prevButton, &QPushButton::clicked, this, &QCalendarWidget::showPreviousMonth);
-    disconnect(prevButton, &QPushButton::clicked, MainWindow::self(), &MainWindow::collapseEventList);
+    MainWindow::self()->fadeInWidget(monthDropDown, duration);
+    MainWindow::self()->fadeInWidget(yearEditBox, duration);
+    MainWindow::self()->fadeInWidget(nextButton, duration);
 }
 
 QTableView *CalendarWidget::getTableView() const

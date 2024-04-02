@@ -34,7 +34,7 @@
 #endif
 
 MainWindow *MainWindow::singleton = NULL;
-QString MainWindow::version = "V0.0";
+QString MainWindow::version = "Version 0.0";
 QString MainWindow::currentPath;
 
 QColor MainWindow::lightColor = 0xF2E9FF;
@@ -219,8 +219,9 @@ MainWindow::MainWindow(QWidget *parent)
     calendarWidget = new CalendarWidget(stackedWidget);
     eventListWidget = new EventListWidget(stackedWidget);
     eventListSnapshot = new QLabel(stackedWidget);
+    eventListSnapshot->setObjectName("eventListSnapshot");
     eventListSnapshot->setScaledContents(true);
-    eventListSnapshot->setStyleSheet("border: none; padding: 0px; margin: 0px; background: transparent;");
+    eventListSnapshot->setStyleSheet("border: none; padding: 0px; margin: 0px;");
 
     stackedWidget->addWidget(calendarWidget);
     stackedWidget->addWidget(eventListWidget);
@@ -260,10 +261,10 @@ MainWindow::MainWindow(QWidget *parent)
 
 
     // Title for the side panel
-    auto titleLabel = new QLabel("Panda Chat <i>" + version + "</i>");
+    auto titleLabel = new QLabel("Panda Task");
     titleLabel->setAlignment(Qt::AlignCenter);
-    titleLabel->setTextFormat(Qt::RichText); // enable HTML tags
-    titleLabel->setStyleSheet("QLabel{font-size: 22px;}");
+//    titleLabel->setTextFormat(Qt::RichText); // enable HTML tags
+    titleLabel->setStyleSheet("QLabel{font-size: 25px;}");
 
     // Group box for theme settings
     auto appearanceGroupBox = new QGroupBox("Appearance");
@@ -281,13 +282,23 @@ MainWindow::MainWindow(QWidget *parent)
     aiLayout->addWidget(voiceSelectionComboBox); // Assuming voiceSelectionComboBox is already created
     aiGroupBox->setLayout(aiLayout);
 
+    auto versionLabel = new QLabel(version);
+    versionLabel->setAlignment(Qt::AlignCenter);
+    versionLabel->setStyleSheet("QLabel{font-size: 11px; font-style: italic;}");
+
+    auto creditLabel = new QLabel("Benjamin Stone, © 2024");
+    creditLabel->setAlignment(Qt::AlignCenter);
+    creditLabel->setStyleSheet("QLabel{font-size: 12px;}");
+
     // Updating the vertical layout
     auto vLayout = SidePanel::self()->verticalLayout();
-    vLayout->setSpacing(30); // Adjust the spacing as needed
+    vLayout->setSpacing(20); // Adjust the spacing as needed
     vLayout->addWidget(titleLabel);
     vLayout->addWidget(appearanceGroupBox);
     vLayout->addWidget(aiGroupBox);
-    vLayout->addStretch(); // This keeps everything top-aligned
+    vLayout->addStretch();
+//    vLayout->addWidget(versionLabel);
+    vLayout->addWidget(creditLabel);
 
 
 
@@ -471,11 +482,11 @@ void MainWindow::setDarkMode(bool isDarkMode)
     }
 
     if (isDarkMode) {
-        SvgButton::setAppColors(lightColor, lightColor, lightColor, darkMidColor);
+        SvgButton::setAppColors(lightColor, darkMidColor, lightColor, darkMidColor);
         audioRecorder->getLevelWidget()->setFillColor(lightColor);
         assistantLevelWidget->setFillColor(darkMidColor);
     } else {
-        SvgButton::setAppColors(darkColor, darkColor, darkColor, lightMidColor);
+        SvgButton::setAppColors(darkColor, lightMidColor, darkColor, lightMidColor);
         audioRecorder->getLevelWidget()->setFillColor(darkColor);
         assistantLevelWidget->setFillColor(lightMidColor);
     }
@@ -723,10 +734,7 @@ void MainWindow::expandEventList(QDate date) {
 
     // Re-enable scrollbars when the animation finishes
     connect(calendarSizeAnimation, &QPropertyAnimation::finished, this, [=]{
-        // hide calendar tool bar buttons and switch functionality of back button
-        calendarWidget->setNavigationButtonsEnabled(true);
-        calendarWidget->handleEventListShown();
-        todayButton->hide();
+
         stackedWidget->setCurrentWidget(calendarWidget);
         eventListWidget->setGeometry(eventListSnapshot->geometry());
         eventListWidget->raise();
@@ -744,7 +752,6 @@ void MainWindow::expandEventList(QDate date) {
     prepareEventListSnapshot();
 
     eventListSnapshot->show();
-    calendarWidget->setNavigationButtonsEnabled(false);
     stackedWidget->setCurrentWidget(eventListSnapshot);
     calendarWidget->show();
 
@@ -752,7 +759,12 @@ void MainWindow::expandEventList(QDate date) {
 
     eventListExpanding = true;
     eventListCollapsing = false;
+
+    calendarWidget->makeBackButtonShowPrevMonth(false);
+
     group->start(QPropertyAnimation::DeleteWhenStopped);
+    fadeOutWidget(todayButton, duration);
+    calendarWidget->fadeOutNavigationButtons(duration);
 }
 
 
@@ -787,9 +799,7 @@ void MainWindow::collapseEventList() {
 
     // Re-enable scrollbars and switch widgets when the animation finishes
     connect(eventListSizeAnimation, &QPropertyAnimation::finished, this, [=]{
-        calendarWidget->setNavigationButtonsEnabled(true);
-        calendarWidget->handleEventListHidden();
-        todayButton->show();
+        calendarWidget->makeBackButtonShowPrevMonth(true);
         stackedWidget->setCurrentWidget(calendarWidget); // Switch back to the calendar widget
 
         topOfStackWidget = calendarWidget;
@@ -805,7 +815,6 @@ void MainWindow::collapseEventList() {
 
     eventListSnapshot->show();
     eventListWidget->hide();
-    calendarWidget->setNavigationButtonsEnabled(false);
     stackedWidget->setCurrentWidget(eventListSnapshot);
     calendarWidget->show();
 
@@ -813,7 +822,10 @@ void MainWindow::collapseEventList() {
 
     eventListExpanding = false;
     eventListCollapsing = true;
+
     group->start(QPropertyAnimation::DeleteWhenStopped);
+    fadeInWidget(todayButton, duration);
+    calendarWidget->fadeInNavigationButtons(duration);
 }
 
 void MainWindow::prepareEventListSnapshot()
@@ -988,6 +1000,55 @@ bool MainWindow::getIsTouching() const
 }
 
 
+void MainWindow::fadeInWidget(QWidget* widget, int duration) {
+    QGraphicsOpacityEffect* effect = qobject_cast<QGraphicsOpacityEffect*>(widget->graphicsEffect());
+    if (!effect) {
+        effect = new QGraphicsOpacityEffect(widget);
+        widget->setGraphicsEffect(effect);
+        effect->setOpacity(0); // Start fully transparent if no effect was previously set
+    }
+
+    // Create and configure the animation
+    QPropertyAnimation* animation = new QPropertyAnimation(effect, "opacity");
+    animation->setDuration(duration);
+    animation->setStartValue(effect->opacity()); // Start from the current opacity
+    animation->setEndValue(1); // Animate to fully opaque
+    animation->setEasingCurve(QEasingCurve::InOutQuad); // Smooth transition
+
+    QObject::connect(animation, &QPropertyAnimation::finished, widget, [widget]{
+        widget->setEnabled(true);
+        if (SvgButton *button = qobject_cast<SvgButton *>(widget)) {
+            button->stopColorOverride();
+        }
+    });
+
+    widget->show(); // Ensure the widget is visible
+    animation->start(QPropertyAnimation::DeleteWhenStopped); // Clean up animation when done
+}
+
+void MainWindow::fadeOutWidget(QWidget* widget, int duration) {
+    QGraphicsOpacityEffect* effect = qobject_cast<QGraphicsOpacityEffect*>(widget->graphicsEffect());
+    if (!effect) {
+        effect = new QGraphicsOpacityEffect(widget);
+        widget->setGraphicsEffect(effect);
+        effect->setOpacity(1); // Assume starting fully opaque if no effect was previously set
+    }
+
+    QPropertyAnimation* animation = new QPropertyAnimation(effect, "opacity");
+    animation->setDuration(duration);
+    animation->setStartValue(effect->opacity()); // Start from the current opacity
+    animation->setEndValue(0); // Animate to fully transparent
+    animation->setEasingCurve(QEasingCurve::InOutQuad); // Smooth transition
+
+    // Connect the animation's finished signal to hide the widget
+//    QObject::connect(animation, &QPropertyAnimation::finished, widget, &QWidget::hide);
+
+    if (SvgButton *button = qobject_cast<SvgButton *>(widget)) {
+        button->startColorOverride(button->activeDefaultColor());
+    }
+    widget->setEnabled(false);
+    animation->start(QPropertyAnimation::DeleteWhenStopped); // Clean up animation when done
+}
 
 
 
