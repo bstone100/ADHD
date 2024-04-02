@@ -32,6 +32,8 @@ public:
     QVBoxLayout *verticalLayout(){return vLayout;}
 
     void touchEvent(QTouchEvent *event);
+
+    void saveOpenChildWidgetGeometry();
 protected:
     bool event(QEvent *event) override;
 
@@ -62,6 +64,9 @@ private:
 
     QPropertyAnimation *expandAnimation;
     QPropertyAnimation *collapseAnimation;
+
+    QMap<QWidget *, QRect> openChildWidgetGeometryMap;
+    void forceChildWidgetGeometry();
 };
 
 #endif // SIDEPANEL_H

@@ -29,12 +29,29 @@ QAbstractButton:pressed {
     color: white; /* Text color for pressed state */
 }
 
-QComboBox {
-    border: 2px solid #F2E9FF; /* Border color */
+QGroupBox {
+    background-color: transparent;
+    border: 2px solid #F2E9FF;
     border-radius: 5px;
-    padding: 4px 8px;
+    margin-top: 1.5ex; /* leave space at the top for the title */
+    font-size: 17px;
+    font-style: italic;
+}
+
+QGroupBox::title {
+    font: helvetica;
+    subcontrol-origin: margin;
+    subcontrol-position: top left; /* position at the top left */
+    left: 10;
+    background-color: #4D426A;
+}
+
+QComboBox {
     color: #F2E9FF; /* Dark text color */
     background-color: transparent;
+    border: none;
+    padding: 0px;
+    margin: 0px;
 }
 
 QComboBox QAbstractItemView {

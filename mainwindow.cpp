@@ -21,8 +21,10 @@
 #include "calendareventmanager.h"
 #include "QGraphicsOpacityEffect"
 #include "QParallelAnimationGroup"
+#include "QGroupBox"
 #include "QStackedLayout"
 #include "qstandardpaths.h"
+#include "widgets/resizingcombobox.h"
 
 #if defined(Q_OS_IOS)
 #include "iOS/hapticfeedback.h"
@@ -32,6 +34,7 @@
 #endif
 
 MainWindow *MainWindow::singleton = NULL;
+QString MainWindow::version = "V0.0";
 QString MainWindow::currentPath;
 
 QColor MainWindow::lightColor = 0xF2E9FF;
@@ -83,7 +86,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(apiKeyButton, &QPushButton::clicked, this, &MainWindow::onApiKeyButtonClicked);
 
 
-    themeComboBox = new QComboBox(SidePanel::self());
+    themeComboBox = new ResizingComboBox(SidePanel::self());
     QStringList themes = {"Light", "Dark", "Auto"};
     themeComboBox->addItems(themes);
     connect(themeComboBox, &QComboBox::currentTextChanged, this, [=]{
@@ -99,18 +102,15 @@ MainWindow::MainWindow(QWidget *parent)
             handleThemeChange(isSystemDark());
         }
     });
-    themeComboBox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-
 
     // Create the dropdown menu for voice selection
-    voiceSelectionComboBox = new QComboBox(SidePanel::self());
-    QStringList voices = {"alloy", "echo", "fable", "onyx", "nova", "shimmer"};
+    voiceSelectionComboBox = new ResizingComboBox(SidePanel::self());
+    QStringList voices = {"Alloy", "Echo", "Fable", "Onyx", "Nova", "Shimmer"};
     voiceSelectionComboBox->addItems(voices);
     voiceSelectionComboBox->setCurrentIndex(0);
     connect(voiceSelectionComboBox, &QComboBox::currentTextChanged, this, [=]{
         voice = voiceSelectionComboBox->currentText();
     });
-    voiceSelectionComboBox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
 
 
 // fixes mac combo box behavior
@@ -259,11 +259,37 @@ MainWindow::MainWindow(QWidget *parent)
     connect(drawerButton, &QPushButton::clicked, SidePanel::self(), &SidePanel::toggle);
 
 
+    // Title for the side panel
+    auto titleLabel = new QLabel("Panda Chat <i>" + version + "</i>");
+    titleLabel->setAlignment(Qt::AlignCenter);
+    titleLabel->setTextFormat(Qt::RichText); // enable HTML tags
+    titleLabel->setStyleSheet("QLabel{font-size: 22px;}");
+
+    // Group box for theme settings
+    auto appearanceGroupBox = new QGroupBox("Appearance");
+    QHBoxLayout *appearanceLayout = new QHBoxLayout;
+    QLabel *themeLabel = new QLabel("Theme:");
+    appearanceLayout->addWidget(themeLabel);
+    appearanceLayout->addWidget(themeComboBox); // Assuming themeComboBox is already created
+    appearanceGroupBox->setLayout(appearanceLayout);
+
+    // Group box for voice settings
+    auto aiGroupBox = new QGroupBox("Speech");
+    QHBoxLayout *aiLayout = new QHBoxLayout;
+    QLabel *voiceLabel = new QLabel("Voice:");
+    aiLayout->addWidget(voiceLabel);
+    aiLayout->addWidget(voiceSelectionComboBox); // Assuming voiceSelectionComboBox is already created
+    aiGroupBox->setLayout(aiLayout);
+
+    // Updating the vertical layout
     auto vLayout = SidePanel::self()->verticalLayout();
-    vLayout->setSpacing(30);
-    vLayout->addWidget(themeComboBox);
-    vLayout->addWidget(voiceSelectionComboBox);
-    vLayout->addStretch();
+    vLayout->setSpacing(30); // Adjust the spacing as needed
+    vLayout->addWidget(titleLabel);
+    vLayout->addWidget(appearanceGroupBox);
+    vLayout->addWidget(aiGroupBox);
+    vLayout->addStretch(); // This keeps everything top-aligned
+
+
 
     // Top layout for dark mode button, voice selection, and record button
     QHBoxLayout *topRowLayout = new QHBoxLayout();
@@ -315,7 +341,7 @@ void MainWindow::say(const QString &text)
 {
     if (text == "") return;
 
-    speechRequest->setTtsVoice(voice);
+    speechRequest->setTtsVoice(voice.toLower());
     speechRequest->setTtsInputText(text);
     speechRequest->execute();
 }
@@ -510,6 +536,10 @@ void MainWindow::loadSettings()
     QTimer::singleShot(5, this, [=]{
         calendarWidget->cacheInitialCellGeometry();
         eventListWidget->setGeometry(calendarWidget->getTableViewInitialGeometry());
+#if defined(Q_OS_IOS)
+        // cache the side panel widgets proper geometry
+        SidePanel::self()->saveOpenChildWidgetGeometry();
+#endif
     });
 
     settingsLoaded = true;

@@ -23,6 +23,7 @@ class SvgButton;
 class ChatTextEdit;
 class AudioLevel;
 class EventListWidget;
+class ResizingComboBox;
 
 class MainWindow : public QMainWindow
 {
@@ -44,6 +45,8 @@ public:
     void loadSettings();
 
     CalendarWidget *getCalendarWidget(){return calendarWidget;}
+
+    static QString version;
 
     static QString currentPath;
 
@@ -97,9 +100,8 @@ private:
     bool isAutoTheme;
     QString voice;
 
-    QComboBox *voiceSelectionComboBox;
-
-    QComboBox *themeComboBox;
+    ResizingComboBox *voiceSelectionComboBox;
+    ResizingComboBox *themeComboBox;
 
     SvgButton *sendChatButton;
     QLineEdit *textInputField;

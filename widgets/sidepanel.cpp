@@ -51,23 +51,10 @@ SidePanel::SidePanel(QWidget *parent) : QWidget(parent) {
         emit animationFinished(isPanelOpen);
     });
 
-    connect(expandAnimation, &QPropertyAnimation::valueChanged, this, [=]{
-        if (QWidget* widget = vLayout->itemAt(0)->widget()) {
-            widget->setGeometry(9, 68, calculateWidth() - 18, 31);
-        }
-        if (QWidget* widget = vLayout->itemAt(1)->widget()) {
-            widget->setGeometry(9, 129, calculateWidth() - 18, 31);
-        }
-    });
-
-    connect(collapseAnimation, &QPropertyAnimation::valueChanged, this, [=]{
-        if (QWidget* widget = vLayout->itemAt(0)->widget()) {
-            widget->setGeometry(9, 68, calculateWidth() - 18, 31);
-        }
-        if (QWidget* widget = vLayout->itemAt(1)->widget()) {
-            widget->setGeometry(9, 129, calculateWidth() - 18, 31);
-        }
-    });
+#if defined(Q_OS_IOS)
+    connect(expandAnimation, &QPropertyAnimation::valueChanged, this, &SidePanel::forceChildWidgetGeometry);
+    connect(collapseAnimation, &QPropertyAnimation::valueChanged, this, &SidePanel::forceChildWidgetGeometry);
+#endif
 }
 
 SidePanel *SidePanel::self()
@@ -167,12 +154,9 @@ void SidePanel::touchEvent(QTouchEvent *event) {
 
             move(newX, y());
 
-            if (QWidget* widget = vLayout->itemAt(0)->widget()) {
-                widget->setGeometry(9, 68, calculateWidth() - 18, 31);
-            }
-            if (QWidget* widget = vLayout->itemAt(1)->widget()) {
-                widget->setGeometry(9, 129, calculateWidth() - 18, 31);
-            }
+#if defined(Q_OS_IOS)
+            forceChildWidgetGeometry();
+#endif
         }
 
         previousPoint = currentTouchPoint;
@@ -288,6 +272,35 @@ void SidePanel::collapse() {
 
     collapseAnimation->start();
 }
+
+
+void SidePanel::saveOpenChildWidgetGeometry()
+{
+    show();
+    setGeometry(SidePanel::self()->openGeometry());
+
+    for (int i = 0; i < vLayout->count(); i++) {
+        if (QWidget* widget = vLayout->itemAt(i)->widget()) {
+            openChildWidgetGeometryMap.insert(widget, widget->geometry());
+        }
+    }
+
+    hide();
+}
+
+void SidePanel::forceChildWidgetGeometry()
+{
+    for (int i = 0; i < vLayout->count(); i++) {
+        if (QWidget* widget = vLayout->itemAt(i)->widget()) {
+            widget->setGeometry(openChildWidgetGeometryMap.value(widget, widget->geometry()));
+        }
+    }
+}
+
+
+
+
+
 
 
 
