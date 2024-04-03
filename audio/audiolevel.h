@@ -34,6 +34,7 @@ protected:
 private:
     void paintMic();
     void paintMascot();
+    void paintConcaveMascot();
 
     qreal m_level = 0.0;
 

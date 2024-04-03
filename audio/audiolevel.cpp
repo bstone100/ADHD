@@ -5,6 +5,7 @@
 #include "audiorecorder.h"
 
 #include <QPainter>
+#include "QPainterPath"
 
 AudioLevel::AudioLevel(QWidget *parent) : QWidget(parent)
 {
@@ -30,7 +31,7 @@ void AudioLevel::paintEvent(QPaintEvent *event)
 {
     Q_UNUSED(event);
 
-    audioRecorder ? paintMic() : paintMascot();
+    audioRecorder ? paintMic() : paintConcaveMascot();
 }
 
 void AudioLevel::paintMic()
@@ -91,7 +92,7 @@ void AudioLevel::paintMascot()
     qreal topLeftY = (93.0/512) * height();
 
     qreal topRightX = (462.0/512) * width();
-//    qreal topRightY = (93/512) * height();
+//    qreal topRightY = (93.0/512) * height();
 
     qreal radius = (topRightX - topLeftX) / 2;
 
@@ -105,6 +106,92 @@ void AudioLevel::paintMascot()
 
     // Draw the circle
     painter.drawEllipse(QPointF(centerX, centerY), levelRadius, levelRadius);
+}
+
+void AudioLevel::paintConcaveMascot()
+{
+    QPainter painter(this);
+    painter.setRenderHint(QPainter::Antialiasing);
+
+    qreal topLeftX = (50.0 / 512) * width();
+    qreal topLeftY = (93.0 / 512) * height();
+
+    qreal topRightX = (462.0 / 512) * width();
+    qreal radius = (topRightX - topLeftX) / 2;
+
+    qreal centerX = topLeftX + radius;
+    qreal centerY = topLeftY + radius;
+
+    QPointF center(centerX, centerY);
+    QRectF rect(QPointF(topLeftX, topLeftY), QSizeF(radius*2, radius*2));
+
+    painter.setBrush(fillColor);
+    painter.setPen(fillColor);
+
+    // slice representing mouth
+    // startAngle > endAngle
+    qreal startAngle = 300;
+    qreal endAngle = 240;
+
+    // arc excluding mouth
+    QPainterPath bodyPath;
+    bodyPath.moveTo(center);
+    bodyPath.arcTo(rect, startAngle, 360 - (startAngle - endAngle));
+    bodyPath.closeSubpath();
+    painter.drawPath(bodyPath);
+
+    // with level 0 draw circular arc from start to end
+    // otherwise use bezier with control point somewhere in quadrant 1
+    QPainterPath mouthPath;
+    if (m_level <= 0.00) {
+        mouthPath.moveTo(center);
+        mouthPath.arcTo(rect, endAngle, (startAngle - endAngle));
+        mouthPath.closeSubpath();
+    } else {
+        QPointF startPoint(centerX + radius * qCos(qDegreesToRadians(startAngle)),
+                           centerY - radius * qSin(qDegreesToRadians(startAngle)));
+
+        QPointF endPoint(centerX + radius * qCos(qDegreesToRadians(endAngle)),
+                         centerY - radius * qSin(qDegreesToRadians(endAngle)));
+
+        // 5 control points, 3 quads
+
+        qreal angle1 = endAngle + (0.70 * (startAngle - endAngle));
+        qreal angle2 = endAngle + (0.70 * (startAngle - endAngle));
+        qreal angle3 = endAngle + (0.50 * (startAngle - endAngle));
+        qreal angle4 = endAngle + (0.30 * (startAngle - endAngle));
+        qreal angle5 = endAngle + (0.30 * (startAngle - endAngle));
+
+        qreal levelRadius = m_level * radius;
+        qreal midRadius1 = levelRadius + (0.99 * (radius - levelRadius));
+        qreal midRadius2 = levelRadius + (0.75 * (radius - levelRadius));
+        qreal midRadius3 = levelRadius + (0.60 * (radius - levelRadius));
+        qreal midRadius4 = levelRadius + (0.75 * (radius - levelRadius));
+        qreal midRadius5 = levelRadius + (0.99 * (radius - levelRadius));
+
+        QPointF controlPoint1(centerX + midRadius1 * qCos(qDegreesToRadians(angle1)),
+                              centerY - midRadius1 * qSin(qDegreesToRadians(angle1)));
+
+        QPointF controlPoint2(centerX + midRadius2 * qCos(qDegreesToRadians(angle2)),
+                              centerY - midRadius2 * qSin(qDegreesToRadians(angle2)));
+
+        QPointF controlPoint3(centerX + midRadius3 * qCos(qDegreesToRadians(angle3)),
+                              centerY - midRadius3 * qSin(qDegreesToRadians(angle3)));
+
+        QPointF controlPoint4(centerX + midRadius4 * qCos(qDegreesToRadians(angle4)),
+                              centerY - midRadius4 * qSin(qDegreesToRadians(angle4)));
+
+        QPointF controlPoint5(centerX + midRadius5 * qCos(qDegreesToRadians(angle5)),
+                              centerY - midRadius5 * qSin(qDegreesToRadians(angle5)));
+
+        mouthPath.moveTo(center);
+        mouthPath.lineTo(startPoint);
+        mouthPath.quadTo(controlPoint1, controlPoint2);
+        mouthPath.quadTo(controlPoint3, controlPoint4);
+        mouthPath.quadTo(controlPoint5, endPoint);
+        mouthPath.lineTo(center);
+    }
+    painter.drawPath(mouthPath);
 }
 
 void AudioLevel::updateOpacity()

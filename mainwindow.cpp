@@ -437,6 +437,7 @@ void MainWindow::playAssistantLevel(const QVector<float> &levels, int duration)
             assistantLevelWidget->setLevel(levels.at(index));
             index++;
         } else {
+            assistantLevelWidget->setLevel(0.0);
             timer->stop();
             index = 0;
             timer->deleteLater();
