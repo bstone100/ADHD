@@ -130,6 +130,8 @@ void API::processToolCalls(const QJsonArray &toolCalls, OpenAIRequest *chatReque
 
     // request that the responses be summarized or that more function calls be made
     chatRequest->execute();
+
+    MainWindow::self()->saveSettings();
 }
 
 void API::printToolCall(const QString &name, const QJsonObject &args)

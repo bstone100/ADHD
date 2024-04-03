@@ -101,9 +101,11 @@ private:
     bool isDarkMode;
     bool isAutoTheme;
     QString voice;
+    QString model;
 
     ResizingComboBox *voiceSelectionComboBox;
     ResizingComboBox *themeComboBox;
+    ResizingComboBox *modelComboBox;
 
     SvgButton *sendChatButton;
     QLineEdit *textInputField;

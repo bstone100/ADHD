@@ -101,6 +101,7 @@ MainWindow::MainWindow(QWidget *parent)
             isAutoTheme = true;
             handleThemeChange(isSystemDark());
         }
+        saveSettings();
     });
 
     // Create the dropdown menu for voice selection
@@ -110,6 +111,17 @@ MainWindow::MainWindow(QWidget *parent)
     voiceSelectionComboBox->setCurrentIndex(0);
     connect(voiceSelectionComboBox, &QComboBox::currentTextChanged, this, [=]{
         voice = voiceSelectionComboBox->currentText();
+        saveSettings();
+    });
+
+
+    modelComboBox = new ResizingComboBox(SidePanel::self());
+    QStringList models = {"Smart", "Smarter"};
+    modelComboBox->addItems(models);
+    modelComboBox->setCurrentIndex(0);
+    connect(modelComboBox, &QComboBox::currentTextChanged, this, [=]{
+        model = modelComboBox->currentText();
+        saveSettings();
     });
 
 
@@ -117,6 +129,7 @@ MainWindow::MainWindow(QWidget *parent)
 #if defined(Q_OS_MACOS)
     voiceSelectionComboBox->setStyleSheet("combobox-popup: 0;");
     themeComboBox->setStyleSheet("combobox-popup: 0;");
+    modelComboBox->setStyleSheet("combobox-popup: 0;");
 #endif
 
     assistantTextEdit = new ChatTextEdit(this);
@@ -166,7 +179,6 @@ MainWindow::MainWindow(QWidget *parent)
 
     // chat request
     chatRequest = new OpenAIRequest();
-    chatRequest->setModel("gpt-3.5-turbo-1106");
     chatRequest->setAccessToken(apiKey);
 
     QJsonObject systemPrompt;
@@ -271,16 +283,36 @@ MainWindow::MainWindow(QWidget *parent)
     QHBoxLayout *appearanceLayout = new QHBoxLayout;
     QLabel *themeLabel = new QLabel("Theme:");
     appearanceLayout->addWidget(themeLabel);
-    appearanceLayout->addWidget(themeComboBox); // Assuming themeComboBox is already created
+    appearanceLayout->addWidget(themeComboBox);
     appearanceGroupBox->setLayout(appearanceLayout);
 
-    // Group box for voice settings
-    auto aiGroupBox = new QGroupBox("Speech");
-    QHBoxLayout *aiLayout = new QHBoxLayout;
+    // Group box for assistant settings
+    auto aiGroupBox = new QGroupBox("Assistant");
+
+    // Create the main vertical layout for the group box
+    QVBoxLayout *assistantVLayout = new QVBoxLayout;
+    assistantVLayout->setSpacing(15);
+
+    // First setting: Voice
+    QHBoxLayout *voiceLayout = new QHBoxLayout;
     QLabel *voiceLabel = new QLabel("Voice:");
-    aiLayout->addWidget(voiceLabel);
-    aiLayout->addWidget(voiceSelectionComboBox); // Assuming voiceSelectionComboBox is already created
-    aiGroupBox->setLayout(aiLayout);
+    voiceLayout->addWidget(voiceLabel);
+    voiceLayout->addWidget(voiceSelectionComboBox); // Assuming voiceSelectionComboBox is already created
+
+    // Second setting: Intelligence (LLM Model)
+    QHBoxLayout *modelLayout = new QHBoxLayout;
+    QLabel *modelLabel = new QLabel("Intelligence:");
+    modelLayout->addWidget(modelLabel);
+    modelLayout->addWidget(modelComboBox); // Assuming modelComboBox is already created
+
+    // Add the horizontal layouts to the main vertical layout
+    assistantVLayout->addLayout(modelLayout);
+    assistantVLayout->addLayout(voiceLayout);
+
+    // Set the main layout for the group box
+    aiGroupBox->setLayout(assistantVLayout);
+
+
 
     auto versionLabel = new QLabel(version);
     versionLabel->setAlignment(Qt::AlignCenter);
@@ -372,6 +404,13 @@ void MainWindow::sendChat()
     userMessage->addTimestamp();
     textInputField->clear();
 
+    int index = modelComboBox->currentIndex();
+    if (index == 0) {
+        chatRequest->setModel("gpt-3.5-turbo-1106");
+    } else if (index == 1) {
+        chatRequest->setModel("gpt-4-1106-preview");
+    }
+
     chatRequest->addMessage(userMessage);
     chatRequest->execute();
 }
@@ -459,7 +498,6 @@ void MainWindow::handleThemeChange(bool isDarkMode)
     if (!settingsLoaded) return;
 
     this->isDarkMode = isDarkMode;
-    saveSettings();
     setDarkMode(isDarkMode);
 }
 
@@ -500,6 +538,7 @@ void MainWindow::saveSettings()
     settings->setValue("isDarkMode", isDarkMode);
     settings->setValue("isAutoTheme", isAutoTheme);
     settings->setValue("voice", voice);
+    settings->setValue("model", model);
 
     settings->setValue("mainWindow/geometry", saveGeometry());
     settings->setValue("mainWindow/windowState", saveState());
@@ -515,6 +554,7 @@ void MainWindow::loadSettings()
     isDarkMode = settings->value("isDarkMode", false).toBool();
     isAutoTheme = settings->value("isAutoTheme", true).toBool();
     voice = settings->value("voice", voiceSelectionComboBox->currentText()).toString();
+    model = settings->value("model", modelComboBox->currentText()).toString();
 
     int voiceIndex = voiceSelectionComboBox->findText(voice);
     if (voiceIndex == -1) {
@@ -522,6 +562,14 @@ void MainWindow::loadSettings()
         voice = voiceSelectionComboBox->currentText();
     } else {
         voiceSelectionComboBox->setCurrentIndex(voiceIndex);
+    }
+
+    int modelIndex = modelComboBox->findText(model);
+    if (modelIndex == -1) {
+        modelComboBox->setCurrentIndex(0);
+        model = modelComboBox->currentText();
+    } else {
+        modelComboBox->setCurrentIndex(modelIndex);
     }
 
 
