@@ -510,11 +510,39 @@ void MainWindow::updateEventViews()
 
 void MainWindow::setDarkMode(bool isDarkMode)
 {
-    QString path = isDarkMode ? ":/style/darkStyle.qss" : ":/style/lightStyle.qss";
-
-    QFile file(path);
+    QFile file(":/style/style.qss");
     if (file.open(QFile::ReadOnly | QFile::Text)) {
         QString styleSheet = file.readAll();
+
+        // this lets us use just one stylesheet and change its colors at runtime
+        if (isDarkMode) {
+            static QColor sidePanelColorDark = 0x4D426A;
+            static QColor menuBorderColorDark = 0x7A71E7;
+            static QColor menuItemSelectedColorDark = 0x5A4EA6;
+            static QColor menuItemDisabledColorDark = 0xA095C7;
+
+            styleSheet.replace("@backgroundColor", darkColor.name());
+            styleSheet.replace("@foregroundColor", lightColor.name());
+
+            styleSheet.replace("@sidePanelColor", sidePanelColorDark.name());
+            styleSheet.replace("@menuBorderColor", menuBorderColorDark.name());
+            styleSheet.replace("@menuItemSelectedColor", menuItemSelectedColorDark.name());
+            styleSheet.replace("@menuItemDisabledColor", menuItemDisabledColorDark.name());
+        } else {
+            static QColor sidePanelColorLight = 0xD1C8E1;
+            static QColor menuBorderColorLight = 0x5A4EA6;
+            static QColor menuItemSelectedColorLight = 0x7A71E7;
+            static QColor menuItemDisabledColorLight = 0xB3A6C9;
+
+            styleSheet.replace("@backgroundColor", lightColor.name());
+            styleSheet.replace("@foregroundColor", darkColor.name());
+
+            styleSheet.replace("@sidePanelColor", sidePanelColorLight.name());
+            styleSheet.replace("@menuBorderColor", menuBorderColorLight.name());
+            styleSheet.replace("@menuItemSelectedColor", menuItemSelectedColorLight.name());
+            styleSheet.replace("@menuItemDisabledColor", menuItemDisabledColorLight.name());
+        }
+
         qApp->processEvents();
         qApp->setStyleSheet(styleSheet);
         qApp->processEvents();

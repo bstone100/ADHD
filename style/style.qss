@@ -2,35 +2,35 @@
 QWidget {
     font-size: 14px;
     font-weight: 600;
-    color: #3D315B;
+    color: @foregroundColor;
 }
 
 QMainWindow {
-    background-color: #F2E9FF;
+    background-color: @backgroundColor;
 }
 
 /* QPushButton (Light Mode) */
 QAbstractButton {
-    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #7A71E7, stop:1 #5A4EA6); /* Gradient for regular state */
-    border: 2px solid #5A4EA6; /* Border color for regular state */
+    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 @menuItemSelectedColor, stop:1 @menuBorderColor); /* Gradient for regular state */
+    border: 2px solid @menuBorderColor; /* Border color for regular state */
     border-radius: 5px;
     padding: 8px 16px;
     color: white; /* Text color for regular state */
 }
 
 QAbstractButton:hover {
-    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #5A4EA6, stop:1 #7A71E7); /* Gradient for hover state */
+    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 @menuBorderColor, stop:1 @menuItemSelectedColor); /* Gradient for hover state */
 }
 
 QAbstractButton:pressed {
-    background-color: #3D315B; /* Background color for pressed state */
-    border: 2px solid #7A71E7; /* Border color for pressed state */
+    background-color: @foregroundColor; /* Background color for pressed state */
+    border: 2px solid @menuItemSelectedColor; /* Border color for pressed state */
     color: white; /* Text color for pressed state */
 }
 
 QGroupBox {
     background-color: transparent;
-    border: 2px solid #3D315B;
+    border: 2px solid @foregroundColor;
     border-radius: 5px;
     margin-top: 1.5ex; /* leave space at the top for the title */
     font-size: 17px;
@@ -41,11 +41,11 @@ QGroupBox::title {
     subcontrol-origin: margin;
     subcontrol-position: top left; /* position at the top left */
     left: 10;
-    background-color: #D1C8E1;
+    background-color: @sidePanelColor;
 }
 
 QComboBox {
-    color: #3D315B; /* Dark text color */
+    color: @foregroundColor; /* Dark text color */
     background-color: transparent;
     border: none;
     padding: 0px;
@@ -53,16 +53,16 @@ QComboBox {
 }
 
 QComboBox QAbstractItemView {
-    background-color: #F2E9FF; /* Light background color */
-    border: 1px solid #5A4EA6; /* Border color */
+    background-color: @backgroundColor; /* Light background color */
+    border: 1px solid @menuBorderColor; /* Border color */
     border-radius: 5px; /* Rounded corners */
-    selection-background-color: #7A71E7;
-    color: #3D315B;
+    selection-background-color: @menuItemSelectedColor;
+    color: @foregroundColor;
 }
 
 QLineEdit {
     background-color: transparent; /* Light background color */
-    border: 2px solid #3D315B; /* Border color */
+    border: 2px solid @foregroundColor; /* Border color */
     border-radius: 20px;
     padding: 4px 8px;
 }
@@ -74,8 +74,8 @@ QTextEdit {
 }
 
 QMenu {
-    background-color: #F2E9FF; /* Light background color */
-    border: 1px solid #5A4EA6; /* Border color */
+    background-color: @backgroundColor; /* Light background color */
+    border: 1px solid @menuBorderColor; /* Border color */
     border-radius: 5px; /* Rounded corners */
 }
 
@@ -85,11 +85,11 @@ QMenu::item {
 }
 
 QMenu::item:selected {
-    background-color: #7A71E7; /* Background color for selected item */
+    background-color: @menuItemSelectedColor; /* Background color for selected item */
 }
 
 QMenu::item:disabled {
-    color: #B3A6C9; /* Color for disabled items */
+    color: @menuItemDisabledColor; /* Color for disabled items */
     background-color: transparent; /* Transparent background for disabled items */
 }
 
@@ -97,40 +97,40 @@ QToolButton, QToolButton:hover {
     font-weight: bold;
     border: none;
     background-color: transparent;
-    color: #3D315B;
+    color: @foregroundColor;
 }
 
 QToolButton:pressed, QToolButton:disabled {
     font-weight: bold;
     border: none;
     background-color: transparent;
-    color: #3D315B;
+    color: @foregroundColor;
 }
 
 QCalendarWidget QAbstractItemView
 {
-    background-color: #F2E9FF;
-    selection-background-color: #F2E9FF; /* the color of the selected cell */
-    selection-color: #3D315B; /* the color of the selected cell's text */
-    gridline-color: #3D315B;
+    background-color: @backgroundColor;
+    selection-background-color: @backgroundColor; /* the color of the selected cell */
+    selection-color: @foregroundColor; /* the color of the selected cell's text */
+    gridline-color: @foregroundColor;
 }
 
 
 /* header row */
 QCalendarWidget QWidget {
-    alternate-background-color: #F2E9FF;
+    alternate-background-color: @backgroundColor;
 
 }
 
 /* navigation bar */
 QCalendarWidget QWidget#qt_calendar_navigationbar
 {
-    background-color: #F2E9FF;
+    background-color: @backgroundColor;
 
 }
 
 SidePanel {
-    background-color: #D1C8E1;
+    background-color: @sidePanelColor;
 }
 
 QScrollArea {
@@ -139,7 +139,7 @@ QScrollArea {
 }
 
 EventListWidget, #eventListSnapshot {
-    background: #F2E9FF;
+    background: @backgroundColor;
 }
 
 
