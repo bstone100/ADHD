@@ -8,22 +8,33 @@
 #include <QUuid>
 #include <QColor>
 
-enum Category {
-    Task,
-    Habit,
-    Deadline
-};
-
-QString categoryToString(Category category);
-Category stringToCategory(const QString &categoryString);
-QColor colorForCategory(Category category);
-
 struct CalendarEvent {
     QString id;
-    QDate date;
-    QTime time;
+
+    // different types of events
+    enum Category {
+        Event = 0,
+        Task,
+        Deadline,
+
+        MaxOption = Deadline,
+        MinOption = Event
+    };
+    static bool isValidCategory(Category category) {
+        return category >= MinOption && category <= MaxOption;
+    }
+    static QString categoryToString(Category category);
+    static Category stringToCategory(const QString &categoryString);
+
     QString description;
     Category category;
+
+    bool allDay;
+
+    QDateTime startDateTime;
+    QDateTime endDateTime;
+
+    QDateTime notificationDateTime;
 
     CalendarEvent();
 
@@ -31,7 +42,7 @@ struct CalendarEvent {
     static CalendarEvent fromJson(const QJsonObject &obj);
 
     bool isValid() const {
-        return date.isValid() && time.isValid();
+        return isValidCategory(category) && startDateTime.isValid() && endDateTime.isValid() && notificationDateTime.isValid();
     }
 
     bool operator==(const CalendarEvent &other) const {
@@ -39,14 +50,10 @@ struct CalendarEvent {
     }
 
     bool operator<(const CalendarEvent& other) const {
-        if (this->date < other.date) {
-            return true;
-        } else if (this->date > other.date) {
-            return false;
-        } else {
-            // Dates are equal, compare times
-            return this->time < other.time;
-        }
+        if (allDay && other.allDay && startDateTime.date() == other.startDateTime.date())
+            return description < other.description;
+
+        return startDateTime < other.startDateTime;
     }
 };
 

@@ -27,16 +27,18 @@ QList<APITool> API::tools()
 void API::generateTools()
 {
     QJsonObject parametersPropertiesObject {
-        {"date", QJsonObject{{"type", "string"}, {"description", "The date of the event, e.g., 2024-02-10"}}},
-        {"time", QJsonObject{{"type", "string"}, {"description", "The time of the event, e.g., 14:00"}}},
-        {"description", QJsonObject{{"type", "string"}, {"description", "A description of the event"}}},
-        {"category", QJsonObject{{"type", "string"}, {"enum", QJsonArray{"Task", "Habit", "Deadline"}}, {"description", "The category of the event"}}}
+        {"description", QJsonObject{{"type", "string"}, {"description", "A description of the event."}}},
+        {"category", QJsonObject{{"type", "string"}, {"enum", QJsonArray{"Event", "Task", "Deadline"}}, {"description", "The category of the event."}}},
+        {"allDay", QJsonObject{{"type", "boolean"}, {"description", "Whether the event is all day."}}},
+        {"startDateTime", QJsonObject{{"type", "string"}, {"description", "The start date and time of the event in 'yyyy-MM-dd ddd HH:mm' format."}}},
+        {"endDateTime", QJsonObject{{"type", "string"}, {"description", "The end date and time of the event in 'yyyy-MM-dd ddd HH:mm' format."}}},
+        {"notificationDateTime", QJsonObject{{"type", "string"}, {"description", "The date and time to send the event's notification in 'yyyy-MM-dd ddd HH:mm' format."}}}
     };
 
     QJsonObject parametersObject {
         {"type", "object"},
         {"properties", parametersPropertiesObject},
-        {"required", QJsonArray{"date", "time", "description", "category"}}
+        {"required", QJsonArray{"description", "category", "allDay", "startDateTime"}}
     };
 
     QJsonObject functionObject {
@@ -146,23 +148,14 @@ void API::printToolCall(const QString &name, const QJsonObject &args)
 
 QString API::addEvent(const QJsonObject &jsonObject)
 {
-    QDate date = QDate::fromString(jsonObject.value("date").toString(), "yyyy-MM-dd");
-    QTime time = QTime::fromString(jsonObject.value("time").toString(), "HH:mm");
-    QString description = jsonObject.value("description").toString();
-    QString categoryString = jsonObject.value("category").toString();
-    Category category = stringToCategory(categoryString);
-
-    CalendarEvent event;
-    event.date = date;
-    event.time = time;
-    event.description = description;
-    event.category = category;
+    CalendarEvent event = CalendarEvent::fromJson(jsonObject);
 
     if (!event.isValid()) {
-        return "Invalid event date or time.";
+        return "Invalid event parameters.";
     }
 
     CalendarEventManager::self()->addEvent(event);
+    CalendarEventManager::self()->scheduleEventNotification(event);
     MainWindow::self()->updateEventViews();
 
     return "Added event.";
@@ -172,16 +165,16 @@ QString API::removeEvent(const QJsonObject &jsonObject)
 {
     QString id = jsonObject["id"].toString();
 
-    if (!CalendarEventManager::self()->containsEvent(id)) {
-        return "CalendarEvent not found.";
-    }
-
     CalendarEvent event = CalendarEventManager::self()->getEvent(id);
+
+    if (!event.isValid()) {
+        return "Event not found.";
+    }
 
     CalendarEventManager::self()->removeEvent(id);
     MainWindow::self()->updateEventViews();
 
-    return "CalendarEvent removed";
+    return "Event removed";
 }
 
 

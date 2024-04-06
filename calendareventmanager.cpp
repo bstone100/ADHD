@@ -3,6 +3,11 @@
 #include "QJsonDocument"
 #include "QJsonArray"
 
+#if defined(Q_OS_DARWIN)
+#include "macOS/notificationhelper.h"
+#endif
+
+
 CalendarEventManager *CalendarEventManager::singleton = NULL;
 
 CalendarEventManager::CalendarEventManager(QObject *parent)
@@ -11,6 +16,8 @@ CalendarEventManager::CalendarEventManager(QObject *parent)
     if (!singleton) {
         singleton = this;
     }
+
+    hasNotificationPermission = false;
 }
 
 CalendarEventManager *CalendarEventManager::self()
@@ -23,19 +30,21 @@ CalendarEventManager *CalendarEventManager::self()
 
 void CalendarEventManager::addEvent(const CalendarEvent &event) {
     idToEventMap.insert(event.id, event);
-    dateToEventListMap[event.date].append(event);
+
+    for (QDate date = event.startDateTime.date(); date <= event.endDateTime.date(); date = date.addDays(1)) {
+        dateToEventListMap[date].append(event);
+    }
 }
 
 void CalendarEventManager::removeEvent(const CalendarEvent &event)
 {
     idToEventMap.remove(event.id);
 
-    auto eventList = dateToEventListMap.value(event.date);
-    int index = eventList.indexOf(event);
-    if (index != -1) {
-        eventList.removeAt(index);
-        dateToEventListMap[event.date] = eventList;
+    for (QDate date = event.startDateTime.date(); date <= event.endDateTime.date(); date = date.addDays(1)) {
+        dateToEventListMap[date].removeAll(event);
     }
+
+    removeEventNotification(event);
 }
 
 void CalendarEventManager::removeEvent(const QString &eventId) {
@@ -65,6 +74,7 @@ void CalendarEventManager::clearEvents() {
     dateToEventListMap.clear();
 }
 
+// currently sent entirely to the LLM
 QJsonObject CalendarEventManager::getJsonObject()
 {
     QJsonObject jObj;
@@ -98,16 +108,78 @@ void CalendarEventManager::saveSettings()
     QSettings settings;
     QJsonDocument doc(getJsonObject());
     settings.setValue("calendarEvents", QString::fromUtf8(doc.toJson()));
+
+    QJsonObject notificationObject;
+    foreach (auto id, idToNotificationMap) {
+        notificationObject[id] = idToNotificationMap[id];
+    }
+    doc.setObject(notificationObject);
+    settings.setValue("notifications", QString::fromUtf8(doc.toJson()));
+
+    settings.setValue("hasNotificationPermission", hasNotificationPermission);
 }
 
 void CalendarEventManager::loadSettings()
 {
     QSettings settings;
     QString eventsString = settings.value("calendarEvents").toString();
-    if (eventsString == "") return;
-    QJsonDocument doc = QJsonDocument::fromJson(eventsString.toUtf8());
-    loadJsonObject(doc.object());
+    if (eventsString != "") {
+        QJsonDocument doc = QJsonDocument::fromJson(eventsString.toUtf8());
+        loadJsonObject(doc.object());
+    }
+
+    QString notiString = settings.value("notifications").toString();
+    if (notiString != "") {
+        QJsonObject notiObj = QJsonDocument::fromJson(notiString.toUtf8()).object();
+        foreach (auto id, notiObj.keys()) {
+            idToNotificationMap[id] = notiObj[id].toString();
+        }
+    }
+
+    hasNotificationPermission = settings.value("hasNotificationPermission", false).toBool();
 }
+
+void CalendarEventManager::scheduleEventNotification(const CalendarEvent &event)
+{
+    if (!hasNotificationPermission) {
+        eventToSchedule = event;
+        requestNotificationPermission([](bool granted){
+            CalendarEventManager::self()->hasNotificationPermission = granted;
+
+            if (granted) {
+                CalendarEventManager::self()->scheduleEventNotification(CalendarEventManager::self()->eventToSchedule);
+            }
+        });
+        return;
+    }
+
+    qint64 notificationTimeEpoch = event.notificationDateTime.toSecsSinceEpoch();
+    auto titleBytes = CalendarEvent::categoryToString(event.category).toUtf8();
+    const char* title = titleBytes.constData();
+    auto bodyBytes = event.description.toUtf8();
+    const char* body = bodyBytes.constData();
+
+    const char* rawIdentifier = scheduleNotification(title, body, notificationTimeEpoch);
+    QString identifier = QString::fromUtf8(rawIdentifier);
+
+    if (identifier != "") {
+        qDebug() << identifier;
+        idToNotificationMap.insert(event.id, identifier);
+    }
+}
+
+void CalendarEventManager::removeEventNotification(const CalendarEvent &event)
+{
+    QString identifier = idToNotificationMap.value(event.id);
+    if (identifier != "") {
+        removeNotification(identifier.toUtf8().constData());
+        idToNotificationMap.remove(event.id);
+    }
+}
+
+
+
+
 
 
 

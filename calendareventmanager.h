@@ -30,10 +30,17 @@ public:
     void saveSettings();
     void loadSettings();
 
+    void scheduleEventNotification(const CalendarEvent &event);
+    void removeEventNotification(const CalendarEvent &event);
+
 private:
     // these both stay updated and valid
     QMap<QString, CalendarEvent> idToEventMap;
     QMap<QDate, QList<CalendarEvent>> dateToEventListMap;
+
+    QMap<QString, QString> idToNotificationMap;
+    bool hasNotificationPermission;
+    CalendarEvent eventToSchedule;
 
     static CalendarEventManager *singleton;
 

@@ -63,6 +63,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         audio/audiolevelcalculator.h audio/audiolevelcalculator.cpp
         widgets/eventlistwidget.h widgets/eventlistwidget.cpp
         widgets/resizingcombobox.h widgets/resizingcombobox.cpp
+        macOS/notificationhelper.h macOS/notificationhelper.mm
 
     )
 # Define target properties for Android with Qt 6 as:
@@ -114,6 +115,7 @@ endif()
 if(APPLE)
     find_library(AVFOUNDATION_FRAMEWORK AVFoundation)
     find_library(COREAUDIO_FRAMEWORK CoreAudio)
+    find_library(USER_NOTIFICATIONS_FRAMEWORK UserNotifications)
 endif()
 
 target_link_libraries(ADHD PRIVATE
@@ -124,6 +126,7 @@ target_link_libraries(ADHD PRIVATE
     ${UIKIT_LIBRARY}
     ${AVFOUNDATION_FRAMEWORK}
     ${COREAUDIO_FRAMEWORK}
+    ${USER_NOTIFICATIONS_FRAMEWORK}
 )
 
 
