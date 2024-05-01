@@ -11,23 +11,7 @@
 struct CalendarEvent {
     QString id;
 
-    // different types of events
-    enum Category {
-        Event = 0,
-        Task,
-        Deadline,
-
-        MaxOption = Deadline,
-        MinOption = Event
-    };
-    static bool isValidCategory(Category category) {
-        return category >= MinOption && category <= MaxOption;
-    }
-    static QString categoryToString(Category category);
-    static Category stringToCategory(const QString &categoryString);
-
     QString description;
-    Category category;
 
     bool allDay;
 
@@ -40,9 +24,16 @@ struct CalendarEvent {
 
     QJsonObject toJson() const;
     static CalendarEvent fromJson(const QJsonObject &obj);
+    void updateFromJson(const QJsonObject &obj);
+
+    static QDateTime parseDateTime(const QString &dateTimeStr);
 
     bool isValid() const {
-        return isValidCategory(category) && startDateTime.isValid() && endDateTime.isValid() && notificationDateTime.isValid();
+        return startDateTime.isValid() && endDateTime.isValid() && notificationDateTime.isValid();
+    }
+
+    bool hasEndDateTime() const {
+        return endDateTime > startDateTime;
     }
 
     bool operator==(const CalendarEvent &other) const {

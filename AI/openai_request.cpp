@@ -19,6 +19,7 @@
 #include "../audio/audiolevelcalculator.h"
 #include <QSslSocket>
 
+
 OpenAIRequest::OpenAIRequest(QObject *parent)
     : QObject(parent)
     , m_networkAccessManager(new QNetworkAccessManager(this))
@@ -140,13 +141,13 @@ void OpenAIRequest::sendChatCompletionsRequest()
     requestBody.insert("frequency_penalty", m_frequencyPenalty);
     requestBody.insert("presence_penalty", m_presencePenalty);
 
-    // only the newest user message should have a scenegraph
-    // and it gets the tools
-    removeAllScenegraphs();
-    auto newestMessage = m_messages.last();
-    if (newestMessage && newestMessage->role() == OpenAIMessage::Role::User) {
-        newestMessage->addScenegraph();
+
+    // insert tools to allow function calls
+    if (selfResponseCount < MAX_SELF_RESPONSE_CALLS) {
+        qDebug() << "selfResponseCount: " << selfResponseCount;
         requestBody.insert("tools", API::getToolsJsonArray());
+    } else {
+        qDebug() << "MAX_SELF_RESPONSE_CALLS";
     }
 
     QJsonArray messageArray;
@@ -188,6 +189,13 @@ void OpenAIRequest::sendChatCompletionsRequest()
             QJsonArray tool_calls = message.value("tool_calls").toArray();
 
             qDebug() << message;
+
+            // track how many tool calls are generated in response to previous tool calls
+            if (!tool_calls.isEmpty() && m_messages.last()->role() == OpenAIMessage::Tool) {
+                selfResponseCount++;
+            } else {
+                selfResponseCount = 0;
+            }
 
             OpenAIMessage *assistantMessage = new OpenAIMessage(content, OpenAIMessage::Role::Assistant);
             assistantMessage->setTool_calls(tool_calls);

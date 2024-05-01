@@ -2,6 +2,7 @@
 
 #include <QObject>
 #include <QNetworkAccessManager>
+#include "QtMultimedia/qmediaplayer.h"
 #include "openai_message.h"
 
 
@@ -115,7 +116,9 @@ private:
     void sendAudioSpeechRequest();
 
     void playAudio(const QByteArray &audioData);
-    AudioLevelCalculator *levelCalculator;
+
+    static const int MAX_SELF_RESPONSE_CALLS = 5;
+    int selfResponseCount = 0;
 };
 
 

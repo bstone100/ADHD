@@ -41,6 +41,8 @@ public:
     // the tools
     static QString addEvent(const QJsonObject &jsonObject);
     static QString removeEvent(const QJsonObject &jsonObject);
+    static QString editEvent(const QJsonObject &jsonObject);
+    static QString getEventsInRange(const QJsonObject &jsonObject);
 
 private:
     static QList<APITool> toolList;

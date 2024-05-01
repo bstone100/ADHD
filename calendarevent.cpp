@@ -1,41 +1,19 @@
 #include "calendarevent.h"
 
 
-QString CalendarEvent::categoryToString(Category category)
-{
-    switch (category) {
-    case Event: return "Event";
-    case Task: return "Task";
-    case Deadline: return "Deadline";
-    default: return "Unknown";
-    }
-}
-
-CalendarEvent::Category CalendarEvent::stringToCategory(const QString &categoryString)
-{
-    if (categoryString == "Event") return Event;
-    if (categoryString == "Task") return Task;
-    if (categoryString == "Deadline") return Deadline;
-    return (Category)-1;
-}
-
 CalendarEvent::CalendarEvent()
 {
     id = QString::number(QUuid::createUuid().data1);
-    category = (Category)-1;
 }
 
 QJsonObject CalendarEvent::toJson() const {
     return QJsonObject{
         {"id", id},
-
         {"description", description},
-        {"category", categoryToString(category)},
-
         {"allDay", allDay},
-        {"startDateTime", startDateTime.toString("yyyy-MM-dd ddd HH:mm")},
-        {"endDateTime", endDateTime.toString("yyyy-MM-dd ddd HH:mm")},
-        {"notificationDateTime", notificationDateTime.toString("yyyy-MM-dd ddd HH:mm")}
+        {"startDateTime", startDateTime.toString("yyyy-MM-dd HH:mm")},
+        {"endDateTime", endDateTime.toString("yyyy-MM-dd HH:mm")},
+        {"notificationDateTime", notificationDateTime.toString("yyyy-MM-dd HH:mm")}
     };
 }
 
@@ -43,42 +21,72 @@ CalendarEvent CalendarEvent::fromJson(const QJsonObject &obj) {
     CalendarEvent e;
     e.id = obj["id"].toString(e.id);
     e.description = obj["description"].toString();
-    e.category = stringToCategory(obj["category"].toString());
     e.allDay = obj["allDay"].toBool(false);
 
-    auto parseDateTime = [&](const QString &dateTimeStr) -> QDateTime {
-        QDateTime dateTime = QDateTime::fromString(dateTimeStr, "yyyy-MM-dd ddd HH:mm");
-        if (!dateTime.isValid()) {
-            QDate date = QDate::fromString(dateTimeStr, "yyyy-MM-dd ddd");
-            if (date.isValid()) {
-                dateTime = QDateTime(date, QTime());
-            }
-        }
-        return dateTime;
-    };
+    e.startDateTime = parseDateTime(obj["startDateTime"].toString());
+    e.endDateTime = parseDateTime(obj["endDateTime"].toString());
 
-    switch (e.category) {
-    case Event:
-        e.startDateTime = parseDateTime(obj["startDateTime"].toString());
-        e.endDateTime = parseDateTime(obj["endDateTime"].toString());
-        if (!e.endDateTime.isValid()) {
-            e.allDay = true;
-            e.endDateTime = e.startDateTime;
-        }
-        break;
-    case Deadline:
-    case Task:
-        e.startDateTime = parseDateTime(obj["startDateTime"].toString());
+    if (!e.endDateTime.isValid() || (e.endDateTime < e.startDateTime)) {
         e.endDateTime = e.startDateTime;
-        break;
     }
 
-    e.notificationDateTime = QDateTime::fromString(obj["notificationDateTime"].toString(), "yyyy-MM-dd ddd HH:mm");
+    e.notificationDateTime = QDateTime::fromString(obj["notificationDateTime"].toString(), "yyyy-MM-dd HH:mm");
     if (!e.notificationDateTime.isValid()) {
         e.notificationDateTime = e.startDateTime;
     }
 
     return e;
+}
+
+void CalendarEvent::updateFromJson(const QJsonObject &obj)
+{
+    if (obj.contains("description")) {
+        description = obj["description"].toString();
+    }
+
+    if (obj.contains("allDay")) {
+        allDay = obj["allDay"].toBool(false);
+    }
+
+    qint64 notiDelta = startDateTime.secsTo(notificationDateTime);
+
+    if (obj.contains("startDateTime")) {
+        QDateTime newStartDateTime = parseDateTime(obj["startDateTime"].toString());
+        if (newStartDateTime.isValid()) {
+            startDateTime = newStartDateTime;
+            notificationDateTime = startDateTime.addSecs(notiDelta); // auto update noti time
+        }
+    }
+
+    if (obj.contains("endDateTime")) {
+        QDateTime newEndDateTime = parseDateTime(obj["endDateTime"].toString());
+        if (newEndDateTime.isValid()) {
+            endDateTime = newEndDateTime;
+        }
+    }
+
+    if (!endDateTime.isValid() || (endDateTime < startDateTime)) {
+        endDateTime = startDateTime;
+    }
+
+    if (obj.contains("notificationDateTime")) {
+        QDateTime newNotificationDateTime = QDateTime::fromString(obj["notificationDateTime"].toString(), "yyyy-MM-dd HH:mm");
+        if (newNotificationDateTime.isValid()) {
+            notificationDateTime = newNotificationDateTime;
+        }
+    }
+}
+
+QDateTime CalendarEvent::parseDateTime(const QString &dateTimeStr)
+{
+    QDateTime dateTime = QDateTime::fromString(dateTimeStr, "yyyy-MM-dd HH:mm");
+    if (!dateTime.isValid()) {
+        QDate date = QDate::fromString(dateTimeStr, "yyyy-MM-dd ddd");
+        if (date.isValid()) {
+            dateTime = QDateTime(date, QTime());
+        }
+    }
+    return dateTime;
 }
 
 

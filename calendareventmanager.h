@@ -2,6 +2,7 @@
 #define CALENDAREVENTMANAGER_H
 
 #include <QObject>
+#include "QtCore/qjsonarray.h"
 #include "calendarevent.h"
 
 class CalendarEventManager : public QObject
@@ -27,6 +28,10 @@ public:
     QJsonObject getJsonObject();
     void loadJsonObject(const QJsonObject &jObj);
 
+    QJsonArray getAllEventsJson();
+    QJsonArray getEventsForDateJson(const QDate &date);
+    QJsonArray getEventsForDateRangeJson(const QDate &startDate, const QDate &endDate);
+
     void saveSettings();
     void loadSettings();
 
@@ -41,6 +46,8 @@ private:
     QMap<QString, QString> idToNotificationMap;
     bool hasNotificationPermission;
     CalendarEvent eventToSchedule;
+
+    QJsonArray eventListToJson(QList<CalendarEvent> events);
 
     static CalendarEventManager *singleton;
 

@@ -65,7 +65,6 @@ void EventListWidget::updateEvents() {
         noEventsLabel->setAlignment(Qt::AlignCenter);
         eventsLayout->addWidget(noEventsLabel, 0, Qt::AlignCenter);
     } else {
-        auto events = CalendarEventManager::self()->getEventsForDate(currentDate);
         events.removeIf([](const CalendarEvent& event) { return !event.isValid(); });
         std::sort(events.begin(), events.end());
 
@@ -76,21 +75,7 @@ void EventListWidget::updateEvents() {
         startTimeEvents.removeIf([](const CalendarEvent& event) { return event.allDay; });
 
         foreach (auto event, allDayEvents) {
-            QString label;
-
-            switch (event.category) {
-            case CalendarEvent::Event:
-            case CalendarEvent::Task:
-                label = QString("All day:  %1")
-                            .arg(event.description);
-                break;
-            case CalendarEvent::Deadline:
-                label = QString("!!! All day:  %1")
-                            .arg(event.description);
-                break;
-            default:
-                break;
-            }
+            QString label = QString("All day:  %1").arg(event.description);
 
             QLabel *eventLabel = new QLabel(label, this);
             eventsLayout->addWidget(eventLabel);
@@ -103,21 +88,12 @@ void EventListWidget::updateEvents() {
         foreach (auto event, startTimeEvents) {
             QString label;
 
-            switch (event.category) {
-            case CalendarEvent::Event:
+            if (event.hasEndDateTime()) {
                 label = QString("%1 - %2: %3")
                             .arg(event.startDateTime.toString("h:mm A"), event.endDateTime.toString("h:mm A"), event.description);
-                break;
-            case CalendarEvent::Task:
+            } else {
                 label = QString("%1: %2")
                             .arg(event.startDateTime.toString("h:mm A"), event.description);
-                break;
-            case CalendarEvent::Deadline:
-                label = QString("!!! %1: %2")
-                            .arg(event.startDateTime.toString("h:mm A"), event.description);
-                break;
-            default:
-                break;
             }
 
             QLabel *eventLabel = new QLabel(label, this);

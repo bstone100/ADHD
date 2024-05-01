@@ -29,6 +29,8 @@ CalendarEventManager *CalendarEventManager::self()
 }
 
 void CalendarEventManager::addEvent(const CalendarEvent &event) {
+    if (!event.isValid()) return;
+
     idToEventMap.insert(event.id, event);
 
     for (QDate date = event.startDateTime.date(); date <= event.endDateTime.date(); date = date.addDays(1)) {
@@ -79,12 +81,7 @@ QJsonObject CalendarEventManager::getJsonObject()
 {
     QJsonObject jObj;
 
-    QJsonArray eventArray;
-    foreach (auto event, idToEventMap.values()) {
-        eventArray.append(event.toJson());
-    }
-    jObj["eventArray"] = eventArray;
-    jObj["eventCount"] = eventArray.size();
+    jObj["eventArray"] = getAllEventsJson();
 
     return jObj;
 }
@@ -101,6 +98,44 @@ void CalendarEventManager::loadJsonObject(const QJsonObject &jObj)
         if (!event.isValid()) continue;
         addEvent(event);
     }
+}
+
+QJsonArray CalendarEventManager::getAllEventsJson()
+{
+    auto events = getAllEvents();
+    return eventListToJson(events);
+}
+
+QJsonArray CalendarEventManager::getEventsForDateJson(const QDate &date)
+{
+    auto events = getEventsForDate(date);
+    return eventListToJson(events);
+}
+
+QJsonArray CalendarEventManager::getEventsForDateRangeJson(const QDate &startDate, const QDate &endDate)
+{
+    auto events = getAllEvents();
+
+    // cull events
+    events.removeIf([&](const CalendarEvent &event){
+        if (event.startDateTime.date() < startDate || event.endDateTime.date() > endDate) {
+            return true;
+        }
+        return false;
+    });
+
+    return eventListToJson(events);
+}
+
+QJsonArray CalendarEventManager::eventListToJson(QList<CalendarEvent> events)
+{
+    std::sort(events.begin(), events.end());
+
+    QJsonArray eventArray;
+    foreach (auto event, events) {
+        eventArray.append(event.toJson());
+    }
+    return eventArray;
 }
 
 void CalendarEventManager::saveSettings()
@@ -154,7 +189,7 @@ void CalendarEventManager::scheduleEventNotification(const CalendarEvent &event)
     }
 
     qint64 notificationTimeEpoch = event.notificationDateTime.toSecsSinceEpoch();
-    auto titleBytes = CalendarEvent::categoryToString(event.category).toUtf8();
+    auto titleBytes = QString("Event").toUtf8();
     const char* title = titleBytes.constData();
     auto bodyBytes = event.description.toUtf8();
     const char* body = bodyBytes.constData();

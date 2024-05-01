@@ -28,11 +28,10 @@ void API::generateTools()
 {
     QJsonObject parametersPropertiesObject {
         {"description", QJsonObject{{"type", "string"}, {"description", "A description of the event."}}},
-        {"category", QJsonObject{{"type", "string"}, {"enum", QJsonArray{"Event", "Task", "Deadline"}}, {"description", "The category of the event."}}},
         {"allDay", QJsonObject{{"type", "boolean"}, {"description", "Whether the event is all day."}}},
-        {"startDateTime", QJsonObject{{"type", "string"}, {"description", "The start date and time of the event in 'yyyy-MM-dd ddd HH:mm' format."}}},
-        {"endDateTime", QJsonObject{{"type", "string"}, {"description", "The end date and time of the event in 'yyyy-MM-dd ddd HH:mm' format."}}},
-        {"notificationDateTime", QJsonObject{{"type", "string"}, {"description", "The date and time to send the event's notification in 'yyyy-MM-dd ddd HH:mm' format."}}}
+        {"startDateTime", QJsonObject{{"type", "string"}, {"description", "The start date and time of the event in 'yyyy-MM-dd HH:mm' format."}}},
+        {"endDateTime", QJsonObject{{"type", "string"}, {"description", "The end date and time of the event in 'yyyy-MM-dd HH:mm' format."}}},
+        {"notificationDateTime", QJsonObject{{"type", "string"}, {"description", "The date and time to send the event's notification in 'yyyy-MM-dd HH:mm' format."}}}
     };
 
     QJsonObject parametersObject {
@@ -52,8 +51,8 @@ void API::generateTools()
         {"function", functionObject}
     };
 
-    // Add the addEvent function and its description to the tools list
     toolList.append(APITool{&API::addEvent, addEventDescription});
+
 
     QJsonObject removeEventParametersPropertiesObject {
         {"id", QJsonObject{{"type", "string"}, {"description", "The unique identifier of the event"}}}
@@ -76,8 +75,61 @@ void API::generateTools()
         {"function", removeEventFunctionObject}
     };
 
-    // Add the removeEvent function and its description to the tools list
     toolList.append(APITool{&API::removeEvent, removeEventDescription});
+
+
+    QJsonObject editEventParametersPropertiesObject {
+        {"id", QJsonObject{{"type", "string"}, {"description", ""}}},
+        {"description", QJsonObject{{"type", "string"}, {"description", ""}}},
+        {"allDay", QJsonObject{{"type", "boolean"}, {"description", ""}}},
+        {"startDateTime", QJsonObject{{"type", "string"}, {"description", ""}}},
+        {"endDateTime", QJsonObject{{"type", "string"}, {"description", ""}}},
+        {"notificationDateTime", QJsonObject{{"type", "string"}, {"description", ""}}}
+    };
+
+    QJsonObject editEventParametersObject {
+        {"type", "object"},
+        {"properties", editEventParametersPropertiesObject},
+        {"required", QJsonArray{"id"}}
+    };
+
+    QJsonObject editEventFunctionObject {
+        {"name", "editEvent"},
+        {"description", "Edit an existing event in the calendar"},
+        {"parameters", editEventParametersObject}
+    };
+
+    QJsonObject editEventDescription {
+        {"type", "function"},
+        {"function", editEventFunctionObject}
+    };
+
+    toolList.append(APITool{&API::editEvent, editEventDescription});
+
+
+    QJsonObject getEventsInRangeParametersPropertiesObject {
+        {"startDate", QJsonObject{{"type", "string"}, {"description", "The start date of the range, in yyyy-MM-dd format"}}},
+        {"endDate", QJsonObject{{"type", "string"}, {"description", "The end date of the range, in yyyy-MM-dd format"}}}
+    };
+
+    QJsonObject getEventsInRangeParametersObject {
+        {"type", "object"},
+        {"properties", getEventsInRangeParametersPropertiesObject},
+        {"required", QJsonArray{"startDate", "endDate"}}
+    };
+
+    QJsonObject getEventsInRangeFunctionObject {
+        {"name", "getEventsInRange"},
+        {"description", "Retrieve events within a specified date range"},
+        {"parameters", getEventsInRangeParametersObject}
+    };
+
+    QJsonObject getEventsInRangeDescription {
+        {"type", "function"},
+        {"function", getEventsInRangeFunctionObject}
+    };
+
+    toolList.append(APITool{&API::getEventsInRange, getEventsInRangeDescription});
 }
 
 QJsonArray API::getToolsJsonArray()
@@ -123,6 +175,7 @@ void API::processToolCalls(const QJsonArray &toolCalls, OpenAIRequest *chatReque
         } else {
             functionResponse = functionName + " is not a valid function.";
         }
+        qDebug() << functionResponse;
 
         // append the function response to conversation
         OpenAIMessage *toolMessage = new OpenAIMessage(functionResponse, OpenAIMessage::Role::Tool);
@@ -158,7 +211,7 @@ QString API::addEvent(const QJsonObject &jsonObject)
     CalendarEventManager::self()->scheduleEventNotification(event);
     MainWindow::self()->updateEventViews();
 
-    return "Added event.";
+    return QString("Added event (id: %1).").arg(event.id);
 }
 
 QString API::removeEvent(const QJsonObject &jsonObject)
@@ -174,10 +227,40 @@ QString API::removeEvent(const QJsonObject &jsonObject)
     CalendarEventManager::self()->removeEvent(id);
     MainWindow::self()->updateEventViews();
 
-    return "Event removed";
+    return "Event removed.";
 }
 
+QString API::editEvent(const QJsonObject &jsonObject)
+{
+    QString id = jsonObject["id"].toString();
 
+    CalendarEvent event = CalendarEventManager::self()->getEvent(id);
+
+    if (!event.isValid()) {
+        return "Event not found.";
+    }
+
+    event.updateFromJson(jsonObject);
+
+    CalendarEventManager::self()->removeEvent(event);
+
+    CalendarEventManager::self()->addEvent(event);
+    CalendarEventManager::self()->scheduleEventNotification(event);
+    MainWindow::self()->updateEventViews();
+
+    return "Event edited.";
+}
+
+QString API::getEventsInRange(const QJsonObject &jsonObject)
+{
+    QDate startDate = QDate::fromString(jsonObject["startDate"].toString(), "yyyy-MM-dd");
+    QDate endDate = QDate::fromString(jsonObject["endDate"].toString(), "yyyy-MM-dd");
+
+    QJsonArray eventArray = CalendarEventManager::self()->getEventsForDateRangeJson(startDate, endDate);
+
+    QJsonDocument doc(eventArray);
+    return doc.toJson(QJsonDocument::Compact);
+}
 
 
 

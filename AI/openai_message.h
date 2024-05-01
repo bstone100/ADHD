@@ -9,7 +9,7 @@ class OpenAIMessage: public QObject
     Q_OBJECT
 
 public:
-    enum class Role {
+    enum Role {
         System,
         User,
         Assistant,
