@@ -31,7 +31,7 @@ void AudioLevel::paintEvent(QPaintEvent *event)
 {
     Q_UNUSED(event);
 
-    audioRecorder ? paintMic() : paintConcaveMascot();
+    audioRecorder ? paintMic() : paintMascot();
 }
 
 void AudioLevel::paintMic()
