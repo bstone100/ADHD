@@ -52,7 +52,7 @@ MainWindow::MainWindow(QWidget *parent)
     settingsLoaded = false;
 
     qApp->setOrganizationName("BenProductions");
-    qApp->setApplicationName("ADHD");
+    qApp->setApplicationName("Panda Task");
 
     qApp->installEventFilter(this);
 
@@ -183,8 +183,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     QJsonObject systemPrompt;
 
-    systemPrompt["prompt"] = "You are part of an app called Panda Task. The app is an improved task management app "
-                             "specifically made for people with ADHD. You are a chatbot built into the app that can "
+    systemPrompt["prompt"] = "You are part of an app called Panda Task. The app is an improved task management app."
+                             "You are a chatbot built into the app that can "
                              "modify the user's calendar and tell the user about their schedule."
                              "Only use tools that you have been given access to."
                              "Use natural language to describe dates and time. Use the 12 hour clock."
