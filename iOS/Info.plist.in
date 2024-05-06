@@ -58,10 +58,10 @@
         <true/>
 
 	<key>NSMicrophoneUsageDescription</key>
-        <string>We require microphone access to record audio.</string>
+        <string>The app records audio in order to convert your speech into text.</string>
 
         <key>NSCameraUsageDescription</key>
-        <string>We require camera access to record video.</string>
+        <string>The app does not need camera access.</string>
 
 	<key>NSSupportsAutomaticGraphicsSwitching</key>
 	<true/>

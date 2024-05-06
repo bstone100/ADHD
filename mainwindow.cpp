@@ -49,8 +49,6 @@ MainWindow::MainWindow(QWidget *parent)
         singleton = this;
     }
 
-    settingsLoaded = false;
-
     qApp->setOrganizationName("BenProductions");
     qApp->setApplicationName("Panda Task");
 
@@ -498,8 +496,8 @@ bool MainWindow::isSystemDark()
 
 void MainWindow::handleThemeChange(bool isDarkMode)
 {
-    if (this->isDarkMode == isDarkMode) return;
     if (!settingsLoaded) return;
+    if (this->isDarkMode == isDarkMode) return;
 
     this->isDarkMode = isDarkMode;
     setDarkMode(isDarkMode);
@@ -614,10 +612,9 @@ void MainWindow::loadSettings()
     }
 
     if (isAutoTheme) {
-        setDarkMode(isSystemDark());
-    } else {
-        setDarkMode(isDarkMode);
+        isDarkMode = isSystemDark();
     }
+    setDarkMode(isDarkMode);
 
     CalendarEventManager::self()->loadSettings();
 
@@ -704,7 +701,7 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
     // macOS: caught main window change:  QEvent(ThemeChange, 0x16f193498)
     // iOS: caught app change:  QEvent(ApplicationPaletteChange, 0x16b590c00)
 
-    if (isAutoTheme) {
+    if (isAutoTheme && settingsLoaded) {
 #if defined(Q_OS_IOS)
         if (obj == qApp && event->type() == QEvent::ApplicationPaletteChange) {
             handleThemeChange(isSystemDark());

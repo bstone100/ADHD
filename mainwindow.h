@@ -85,7 +85,7 @@ protected:
 private:
     static MainWindow *singleton;
 
-    bool settingsLoaded;
+    bool settingsLoaded = false;
 
     void updateApiKeyButtonLabel();
 
