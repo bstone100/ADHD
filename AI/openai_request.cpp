@@ -205,11 +205,11 @@ void OpenAIRequest::sendChatCompletionsRequest()
                 // it's done making function calls and we have a message response
                 removeAllTimestamps();
                 MainWindow::self()->setAssistantWidgetText(content);
+
+                emit requestFinished(content);
             } else {
                 API::processToolCalls(tool_calls, this);
             }
-
-            emit requestFinished(content);
         } else {
             emit requestError(reply->errorString() + reply->readAll());
         }

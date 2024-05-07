@@ -8,6 +8,7 @@
 #include "../calendarevent.h"
 #include "../mainwindow.h"
 #include "../calendareventmanager.h"
+#include "qapplication.h""
 
 QList<APITool> API::toolList = {};
 
@@ -212,7 +213,7 @@ void API::processToolCalls(const QJsonArray &toolCalls, OpenAIRequest *chatReque
         chatRequest->addMessage(toolMessage);
     }
 
-    MainWindow::self()->setAssistantWidgetText(onlyGettingEvents ? "Checking your schedule..." : "Completing tasks...");
+    MainWindow::self()->setAssistantWidgetText(onlyGettingEvents ? qApp->tr("Checking your schedule...") : qApp->tr("Completing tasks..."));
 
     // request that the responses be summarized or that more function calls be made
     chatRequest->execute();

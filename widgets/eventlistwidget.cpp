@@ -45,7 +45,7 @@ EventListWidget::EventListWidget(QWidget *parent) : QWidget(parent) {
 
 void EventListWidget::setDate(const QDate &date) {
     currentDate = date;
-    dateLabel->setText(currentDate.toString("dddd, MMMM d, yyyy"));
+    dateLabel->setText(QLocale::system().toString(currentDate, "dddd, MMMM d, yyyy"));
     updateEvents();
 }
 
@@ -61,7 +61,7 @@ void EventListWidget::updateEvents() {
 
     if (events.isEmpty()) {
         // If there are no events, display a message to the user
-        QLabel *noEventsLabel = new QLabel("No events for this date", this);
+        QLabel *noEventsLabel = new QLabel(tr("No events for this date"), this);
         noEventsLabel->setAlignment(Qt::AlignCenter);
         eventsLayout->addWidget(noEventsLabel, 0, Qt::AlignCenter);
     } else {
@@ -75,7 +75,7 @@ void EventListWidget::updateEvents() {
         startTimeEvents.removeIf([](const CalendarEvent& event) { return event.allDay; });
 
         foreach (auto event, allDayEvents) {
-            QString label = QString("All day:  %1").arg(event.description);
+            QString label = QString(tr("All day:") + "  %1").arg(event.description);
 
             QLabel *eventLabel = new QLabel(label, this);
             eventsLayout->addWidget(eventLabel);
@@ -87,13 +87,15 @@ void EventListWidget::updateEvents() {
 
         foreach (auto event, startTimeEvents) {
             QString label;
+            QString startTimeString = QLocale::system().toString(event.startDateTime, "h:mm A");
+            QString endTimeString = QLocale::system().toString(event.endDateTime, "h:mm A");
 
             if (event.hasEndDateTime()) {
                 label = QString("%1 - %2: %3")
-                            .arg(event.startDateTime.toString("h:mm A"), event.endDateTime.toString("h:mm A"), event.description);
+                            .arg(startTimeString, endTimeString, event.description);
             } else {
                 label = QString("%1: %2")
-                            .arg(event.startDateTime.toString("h:mm A"), event.description);
+                            .arg(startTimeString, event.description);
             }
 
             QLabel *eventLabel = new QLabel(label, this);
