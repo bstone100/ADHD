@@ -201,9 +201,13 @@ void OpenAIRequest::sendChatCompletionsRequest()
             assistantMessage->setTool_calls(tool_calls);
             addMessage(assistantMessage);
 
-            API::processToolCalls(tool_calls, this);
-
-            MainWindow::self()->setAssistantWidgetText(tool_calls.isEmpty() ? content : "Completing tasks...");
+            if (tool_calls.isEmpty()) {
+                // it's done making function calls and we have a message response
+                removeAllTimestamps();
+                MainWindow::self()->setAssistantWidgetText(content);
+            } else {
+                API::processToolCalls(tool_calls, this);
+            }
 
             emit requestFinished(content);
         } else {

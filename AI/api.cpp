@@ -130,6 +130,31 @@ void API::generateTools()
     };
 
     toolList.append(APITool{&API::getEventsInRange, getEventsInRangeDescription});
+
+
+    QJsonObject getContextForRangeParametersPropertiesObject {
+        {"startDate", QJsonObject{{"type", "string"}, {"description", ""}}},
+        {"endDate", QJsonObject{{"type", "string"}, {"description", ""}}}
+    };
+
+    QJsonObject getContextForRangeParametersObject {
+        {"type", "object"},
+        {"properties", getContextForRangeParametersPropertiesObject},
+        {"required", QJsonArray{"startDate", "endDate"}}
+    };
+
+    QJsonObject getContextForRangeFunctionObject {
+        {"name", "getContextForRange"},
+        {"description", "Show the days of the week corresponding to the dates in the range"},
+        {"parameters", getContextForRangeParametersObject}
+    };
+
+    QJsonObject getContextForRangeDescription {
+        {"type", "function"},
+        {"function", getContextForRangeFunctionObject}
+    };
+
+    toolList.append(APITool{&API::getContextForRange, getContextForRangeDescription});
 }
 
 QJsonArray API::getToolsJsonArray()
@@ -155,6 +180,7 @@ void API::processToolCalls(const QJsonArray &toolCalls, OpenAIRequest *chatReque
 {
     if (toolCalls.isEmpty()) return;
 
+    bool onlyGettingEvents = true;
     for (int i = 0; i < toolCalls.size(); i++) {
         QJsonObject toolCall = toolCalls.at(i).toObject();
         QJsonObject function = toolCall["function"].toObject();
@@ -162,6 +188,9 @@ void API::processToolCalls(const QJsonArray &toolCalls, OpenAIRequest *chatReque
         // call the function
         QString functionName = function["name"].toString();
         APITool functionToCall = API::getToolByName(functionName);
+        if (functionName != "getEventsInRange" && functionName != "getContextForRange") {
+            onlyGettingEvents = false;
+        }
 
         QString argumentsStr = function["arguments"].toString();
         QJsonDocument doc = QJsonDocument::fromJson(argumentsStr.toUtf8());
@@ -182,6 +211,8 @@ void API::processToolCalls(const QJsonArray &toolCalls, OpenAIRequest *chatReque
         toolMessage->setTool_call_id(toolCall["id"].toString());
         chatRequest->addMessage(toolMessage);
     }
+
+    MainWindow::self()->setAssistantWidgetText(onlyGettingEvents ? "Checking your schedule..." : "Completing tasks...");
 
     // request that the responses be summarized or that more function calls be made
     chatRequest->execute();
@@ -261,6 +292,49 @@ QString API::getEventsInRange(const QJsonObject &jsonObject)
     QJsonDocument doc(eventArray);
     return doc.toJson(QJsonDocument::Compact);
 }
+
+QString API::getContextForRange(const QJsonObject &jsonObject)
+{
+    QDate startDate = QDate::fromString(jsonObject["startDate"].toString(), "yyyy-MM-dd");
+    QDate endDate = QDate::fromString(jsonObject["endDate"].toString(), "yyyy-MM-dd");
+
+    return getContextForDateRange(startDate, endDate);
+}
+
+
+QString API::getContextForDateRange(const QDate &startDate, const QDate &endDate)
+{
+    QString context;
+    QDate currentDate = QDate::currentDate();
+
+    for (int i = 0; i <= startDate.daysTo(endDate); i++) {
+        QDate futureDate = startDate.addDays(i);
+        QString dateString;
+
+        // Check if it's the first or last date of the range
+        if (i == 0 || i == startDate.daysTo(endDate)) {
+            dateString = futureDate.toString("ddd d MMM");
+        } else {
+            dateString = futureDate.toString("ddd d");
+        }
+
+        // Check if the date is 'today'
+        if (futureDate == currentDate) {
+            dateString += " today";
+        }
+
+        dateString += ", ";
+        context += dateString;
+    }
+
+    context.chop(2);  // Remove the last comma and space
+    return context;
+}
+
+
+
+
+
 
 
 

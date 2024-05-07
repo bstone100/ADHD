@@ -84,7 +84,6 @@ public:
 
     QJsonObject scenegraph() const;
 
-    QString timestamp() const;
 
 signals:
     void contentChanged();
@@ -100,7 +99,6 @@ private:
     Role m_role;
 
     QString m_instructions;
-    QString m_timestamp;
     QJsonObject m_scenegraph;
 };
 

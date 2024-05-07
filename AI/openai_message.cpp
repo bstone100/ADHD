@@ -1,6 +1,7 @@
 #include "openai_message.h"
 #include "QtCore/qjsondocument.h"
 #include "../calendareventmanager.h"
+#include "api.h"
 
 OpenAIMessage::OpenAIMessage(QObject *parent):
     QObject(parent)
@@ -111,9 +112,13 @@ void OpenAIMessage::removeInstructions()
 
 void OpenAIMessage::addTimestamp()
 {
-    QDateTime currentDateTime = QDateTime::currentDateTime();
-    m_timestamp = currentDateTime.toString("yyyy-MM-dd ddd HH:mm");
-    m_contentObject["timestamp"] = m_timestamp;
+    QDate currentDate = QDate::currentDate();
+    m_contentObject["today"] = currentDate.toString("yyyy-MM-dd ddd");
+
+    QTime currentTime = QTime::currentTime();
+    m_contentObject["timestamp"] = currentTime.toString("HH:mm");
+
+    m_contentObject["dateContext"] = API::getContextForDateRange(currentDate, currentDate.addDays(14));
 }
 
 void OpenAIMessage::removeTimestamp()
@@ -121,6 +126,8 @@ void OpenAIMessage::removeTimestamp()
     // keep the key just remove the value
     if (m_contentObject.contains("timestamp")) {
         m_contentObject["timestamp"] = "removed";
+        m_contentObject["dateContext"] = "removed";
+        m_contentObject["today"] = "removed";
     }
 }
 
@@ -152,11 +159,6 @@ QString OpenAIMessage::instructions() const
 QJsonObject OpenAIMessage::scenegraph() const
 {
     return m_scenegraph;
-}
-
-QString OpenAIMessage::timestamp() const
-{
-    return m_timestamp;
 }
 
 

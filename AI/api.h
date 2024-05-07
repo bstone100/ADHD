@@ -43,6 +43,10 @@ public:
     static QString removeEvent(const QJsonObject &jsonObject);
     static QString editEvent(const QJsonObject &jsonObject);
     static QString getEventsInRange(const QJsonObject &jsonObject);
+    static QString getContextForRange(const QJsonObject &jsonObject);
+
+    // convenience
+    static QString getContextForDateRange(const QDate &startDate, const QDate &endDate);
 
 private:
     static QList<APITool> toolList;
