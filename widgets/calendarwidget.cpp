@@ -39,6 +39,7 @@ CalendarWidget::CalendarWidget(QWidget *parent) : QCalendarWidget(parent) {
     monthDropDown->setStyleSheet("QToolButton::menu-indicator { image: none; }");
     monthDropDown->setCursor(Qt::PointingHandCursor);
     monthDropDown->installEventFilter(this);
+    monthDropDown->setMinimumWidth(110);
 
     yearEditBox = findChild<QToolButton *>("qt_calendar_yearbutton");
     yearEditBox->setStyleSheet("QToolButton::menu-indicator { image: none; }");

@@ -179,7 +179,6 @@ MainWindow::MainWindow(QWidget *parent)
     chatRequest->setAccessToken(apiKey);
 
     QString systemLanguage = QLocale::system().languageToString(QLocale::system().language());
-    qDebug() << systemLanguage;
 
     QJsonObject systemPrompt;
 
@@ -205,7 +204,6 @@ MainWindow::MainWindow(QWidget *parent)
     chatRequest->addMessage(new OpenAIMessage(systemPrompt, OpenAIMessage::System));
 
     QString helloMessage = tr("Hello! How can I assist you today?");
-    qDebug() << helloMessage;
 
     chatRequest->addMessage(new OpenAIMessage(helloMessage, OpenAIMessage::Assistant));
 
