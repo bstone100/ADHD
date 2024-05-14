@@ -39,12 +39,12 @@ public:
 
     void makeBackButtonShowPrevMonth(bool showPreviousMonth);
 
-    void fadeOutNavigationButtons(int duration = 500);
-    void fadeInNavigationButtons(int duration = 500);
-
-    QWidget *getCellViewWidget() const;
-
     SvgButton *getPrevButton() const;
+    SvgButton *getNextButton() const;
+    QToolButton *getYearEditBox() const;
+    QToolButton *getMonthDropDown() const;
+
+    QDate getPressedDate() const;
 
 protected:
     void paintCell(QPainter *painter, const QRect &rect, QDate date) const override;
@@ -59,8 +59,6 @@ private:
     QToolButton *yearEditBox;
     SvgButton *prevButton;
     SvgButton *nextButton;
-
-    bool eventListVisible;
 
     QDate pressedDate;
 

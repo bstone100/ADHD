@@ -240,11 +240,23 @@ MainWindow::MainWindow(QWidget *parent)
 
     stackedWidget = new QStackedWidget(this);
     calendarWidget = new CalendarWidget(stackedWidget);
+    calendarTableView = calendarWidget->getTableView();
     eventListWidget = new EventListWidget(stackedWidget);
+
     eventListSnapshot = new QLabel(stackedWidget);
-    eventListSnapshot->setObjectName("eventListSnapshot");
+    eventListSnapshot->setObjectName("widgetSnapshot");
     eventListSnapshot->setScaledContents(true);
-    eventListSnapshot->setStyleSheet("border: none; padding: 0px; margin: 0px;");
+
+    currentCalendarSnapshot = new QLabel(calendarWidget); // snapshot of the table view not the whole calendar widget
+    currentCalendarSnapshot->setObjectName("widgetSnapshot");
+    currentCalendarSnapshot->setScaledContents(true);
+    currentCalendarSnapshot->setVisible(false);
+
+    adjacentCalendarSnapshot = new QLabel(calendarWidget); // snapshot of the table view not the whole calendar widget
+    adjacentCalendarSnapshot->setObjectName("widgetSnapshot");
+    adjacentCalendarSnapshot->setScaledContents(true);
+    adjacentCalendarSnapshot->setVisible(false);
+
 
     stackedWidget->addWidget(calendarWidget);
     stackedWidget->addWidget(eventListWidget);
@@ -252,7 +264,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     topOfStackWidget = calendarWidget;
 
-    connect(calendarWidget, &QCalendarWidget::clicked, this, &MainWindow::expandEventList);
+//    connect(calendarWidget, &QCalendarWidget::clicked, this, &MainWindow::expandEventList);
 
 
     // today button
@@ -517,6 +529,7 @@ void MainWindow::updateEventViews()
 {
     calendarWidget->updateCells();
     eventListWidget->updateEvents();
+    calendarSnapshotCache.clear();
 }
 
 void MainWindow::setDarkMode(bool isDarkMode)
@@ -669,13 +682,20 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
     case QEvent::TouchUpdate:
     case QEvent::TouchEnd:
         if (obj->objectName() != "qt_scrollarea_viewport") {
+            QTouchEvent *touchEvent = static_cast<QTouchEvent*>(event);
+
+            // if we're looking at the calendar then a swipe from the left edge is for the side panel
             if (topOfStackWidget == calendarWidget || SidePanel::self()->isVisibleToUser()) {
+
                 // route touch events through the side panel
-                SidePanel::self()->touchEvent(static_cast<QTouchEvent*>(event));
+                // will do nothing if start pos was not on left edge (30 px threshold)
+                SidePanel::self()->touchEvent(touchEvent);
+                // process here as an attempt to swipe between months
+                this->swipeMonthTouchEvent(touchEvent);
             } else {
-                // handle the events here
+                // if we're looking at the event list then a swipe from the left edge is to return to the calendar
                 if (!eventListExpanding && !eventListCollapsing) {
-                    this->touchEvent(static_cast<QTouchEvent*>(event));
+                    this->exitEventListTouchEvent(touchEvent);
                 }
             }
         }
@@ -791,7 +811,7 @@ void MainWindow::expandEventList(QDate date) {
     QPropertyAnimation *eventListSizeAnimation = new QPropertyAnimation(eventListSnapshot, "geometry");
     eventListSizeAnimation->setDuration(duration);
 
-    QPropertyAnimation *calendarSizeAnimation = new QPropertyAnimation(calendarWidget->getTableView(), "geometry");
+    QPropertyAnimation *calendarSizeAnimation = new QPropertyAnimation(calendarTableView, "geometry");
     calendarSizeAnimation->setDuration(duration);
 
     eventListSizeAnimation->setEasingCurve(QEasingCurve::OutQuad);
@@ -801,28 +821,30 @@ void MainWindow::expandEventList(QDate date) {
     // start values dependent: calendar starts at current geom and event list starts at current cell size
     // end values constant: calendar ends at explosion geom and event list ends at initial calendar geom
 
-    QRect currentCellRect = calendarWidget->getCurrentCellRectForDate(calendarWidget->selectedDate());
-    currentCellRect.moveTopLeft(stackedWidget->mapFromGlobal(currentCellRect.topLeft()));
-
-    QRect explosionRect = calculateExplosionRect(date);
-
-    // expand from cell to full size
+    // if we're expanding from somewhere in the middle of the animation
     if (topOfStackWidget == eventListSnapshot) {
+        // use current snapshot geometry
         eventListSizeAnimation->setStartValue(eventListSnapshot->geometry());
     } else {
+        // use geometry from the calendar widget
+
+        QRect currentCellRect = calendarWidget->getCurrentCellRectForDate(calendarWidget->selectedDate());
+        currentCellRect.moveTopLeft(stackedWidget->mapFromGlobal(currentCellRect.topLeft()));
+
         eventListSizeAnimation->setStartValue(currentCellRect);
     }
 
+    calendarSizeAnimation->setStartValue(calendarTableView->geometry());
+
     eventListSizeAnimation->setEndValue(calendarWidget->getTableViewInitialGeometry());
+    calendarSizeAnimation->setEndValue(calculateExplosionRect(date)); // explosion rect is the calendar very blown up
 
-    // expand from full size to massive size to give the effect of exploding
-    calendarSizeAnimation->setStartValue(calendarWidget->getTableView()->geometry());
-    calendarSizeAnimation->setEndValue(explosionRect);
-
-    // Re-enable scrollbars when the animation finishes
+    // when the animation finishes (event list is fully expanded)
     connect(calendarSizeAnimation, &QPropertyAnimation::finished, this, [=]{
 
         stackedWidget->setCurrentWidget(calendarWidget);
+
+        // replace the event list snapshot with the actual event list
         eventListWidget->setGeometry(eventListSnapshot->geometry());
         eventListWidget->raise();
         eventListWidget->show();
@@ -836,7 +858,8 @@ void MainWindow::expandEventList(QDate date) {
     group->addAnimation(eventListSizeAnimation);
     group->addAnimation(calendarSizeAnimation);
 
-    prepareEventListSnapshot();
+    eventListSnapshot->hide();
+    captureWidgetSnapshot(eventListWidget, eventListSnapshot);
 
     eventListSnapshot->show();
     stackedWidget->setCurrentWidget(eventListSnapshot);
@@ -850,8 +873,8 @@ void MainWindow::expandEventList(QDate date) {
     calendarWidget->makeBackButtonShowPrevMonth(false);
 
     group->start(QPropertyAnimation::DeleteWhenStopped);
-    fadeOutWidget(todayButton, duration);
-    calendarWidget->fadeOutNavigationButtons(duration);
+    fadeOutWidgets({todayButton, calendarWidget->getNextButton(), calendarWidget->getYearEditBox(),
+                    calendarWidget->getMonthDropDown()}, duration);
 }
 
 
@@ -862,7 +885,7 @@ void MainWindow::collapseEventList() {
     QPropertyAnimation *eventListSizeAnimation = new QPropertyAnimation(eventListSnapshot, "geometry");
     eventListSizeAnimation->setDuration(duration);
 
-    QPropertyAnimation *calendarSizeAnimation = new QPropertyAnimation(calendarWidget->getTableView(), "geometry");
+    QPropertyAnimation *calendarSizeAnimation = new QPropertyAnimation(calendarTableView, "geometry");
     calendarSizeAnimation->setDuration(duration);
 
     eventListSizeAnimation->setEasingCurve(QEasingCurve::OutQuad);
@@ -878,13 +901,15 @@ void MainWindow::collapseEventList() {
     QRect initialCellRect = calendarWidget->getInitialCellRectForDate(calendarWidget->selectedDate());
     initialCellRect.moveTopLeft(stackedWidget->mapFromGlobal(initialCellRect.topLeft()));
 
+    // event list shrinks from full size to small cell
     eventListSizeAnimation->setStartValue(currentCellRect);
     eventListSizeAnimation->setEndValue(initialCellRect);
 
-    calendarSizeAnimation->setStartValue(calendarWidget->getTableView()->geometry());
+    // calendar shrinks down to normal size
+    calendarSizeAnimation->setStartValue(calendarTableView->geometry());
     calendarSizeAnimation->setEndValue(calendarWidget->getTableViewInitialGeometry());
 
-    // Re-enable scrollbars and switch widgets when the animation finishes
+    // when the animation finishes
     connect(eventListSizeAnimation, &QPropertyAnimation::finished, this, [=]{
         calendarWidget->makeBackButtonShowPrevMonth(true);
         stackedWidget->setCurrentWidget(calendarWidget); // Switch back to the calendar widget
@@ -898,7 +923,8 @@ void MainWindow::collapseEventList() {
     group->addAnimation(eventListSizeAnimation);
     group->addAnimation(calendarSizeAnimation);
 
-    prepareEventListSnapshot();
+    eventListSnapshot->hide();
+    captureWidgetSnapshot(eventListWidget, eventListSnapshot);
 
     eventListSnapshot->show();
     eventListWidget->hide();
@@ -911,16 +937,23 @@ void MainWindow::collapseEventList() {
     eventListCollapsing = true;
 
     group->start(QPropertyAnimation::DeleteWhenStopped);
-    fadeInWidget(todayButton, duration);
-    calendarWidget->fadeInNavigationButtons(duration);
+    fadeInWidgets({todayButton, calendarWidget->getNextButton(), calendarWidget->getYearEditBox(),
+                   calendarWidget->getMonthDropDown()}, duration);
 }
 
-void MainWindow::prepareEventListSnapshot()
+QPixmap MainWindow::captureWidgetSnapshot(QWidget *widget, QLabel *snapshot)
 {
-    eventListSnapshot->hide();
-    QPixmap pixmap(eventListWidget->size());
-    eventListWidget->render(&pixmap);
-    eventListSnapshot->setPixmap(pixmap);
+    if (!widget) return QPixmap();
+
+    QPixmap pixmap(widget->size() * devicePixelRatioF());
+    pixmap.setDevicePixelRatio(devicePixelRatioF());
+    widget->render(&pixmap);
+
+    if (snapshot) {
+        snapshot->setPixmap(pixmap);
+    }
+
+    return pixmap;
 }
 
 bool MainWindow::isEventListCollapsing() const
@@ -944,8 +977,8 @@ QWidget *MainWindow::getTopOfStackWidget() const
 
 
 
-
-void MainWindow::touchEvent(QTouchEvent *event) {
+// for swiping to close the event list and return to the calendar
+void MainWindow::exitEventListTouchEvent(QTouchEvent *event) {
     const QList<QTouchEvent::TouchPoint> &touchPoints = event->points();
     if (touchPoints.isEmpty()) return;
 
@@ -969,7 +1002,7 @@ void MainWindow::touchEvent(QTouchEvent *event) {
         previousPoint = currentTouchPoint;
 
         if (!calendarInterpolator) {
-            calendarInterpolator = new QPropertyAnimation(calendarWidget->getTableView(), "geometry");
+            calendarInterpolator = new QPropertyAnimation(calendarTableView, "geometry");
             calendarInterpolator->setEasingCurve(QEasingCurve::OutQuad);
             calendarInterpolator->setDuration(1000);
 
@@ -986,7 +1019,7 @@ void MainWindow::touchEvent(QTouchEvent *event) {
         eventListInterpolator->setStartValue(eventListWidget->geometry());
         eventListInterpolator->setEndValue(initialCellRect);
 
-        calendarInterpolator->setStartValue(calendarWidget->getTableView()->geometry());
+        calendarInterpolator->setStartValue(calendarTableView->geometry());
         calendarInterpolator->setEndValue(calendarWidget->getTableViewInitialGeometry());
 
         progress = 0.0;
@@ -1016,8 +1049,7 @@ void MainWindow::touchEvent(QTouchEvent *event) {
 
 
             if (topOfStackWidget == eventListWidget) {
-                prepareEventListSnapshot();
-
+                captureWidgetSnapshot(eventListWidget, eventListSnapshot);
                 eventListWidget->hide();
                 eventListSnapshot->setGeometry(eventListWidget->geometry());
                 eventListSnapshot->show();
@@ -1037,7 +1069,7 @@ void MainWindow::touchEvent(QTouchEvent *event) {
 
             calendarInterpolator->setCurrentTime(progress * calendarInterpolator->duration());
             QRect calendarGeom = calendarInterpolator->currentValue().toRect();
-            calendarWidget->getTableView()->setGeometry(calendarGeom);
+            calendarTableView->setGeometry(calendarGeom);
         }
 
         previousPoint = currentTouchPoint;
@@ -1048,14 +1080,14 @@ void MainWindow::touchEvent(QTouchEvent *event) {
 
         isTouching = false;
 
-        handleSwipeEnd();
+        exitEventListHandleSwipeEnd();
         break;
     default:
         break;
     }
 }
 
-void MainWindow::handleSwipeEnd() {
+void MainWindow::exitEventListHandleSwipeEnd() {
 
     // a click
     if (progress == 0.0 && previousPoint == touchStartPoint) {
@@ -1079,6 +1111,274 @@ void MainWindow::handleSwipeEnd() {
     } else {
         expandEventList(eventListWidget->getCurrentDate());
     }
+}
+
+
+
+
+
+
+
+
+void MainWindow::swipeMonthTouchEvent(QTouchEvent *event)
+{
+    const QList<QTouchEvent::TouchPoint> &touchPoints = event->points();
+    if (touchPoints.isEmpty()) return;
+
+    const QTouchEvent::TouchPoint &touchPoint = touchPoints.first();
+    QPoint currentTouchPoint = touchPoint.position().toPoint();
+
+    switch (event->type()) {
+    case QEvent::TouchBegin: {
+#if defined(Q_OS_IOS)
+        prepareHapticFeedback();
+#endif
+
+        isTouching = true;
+
+        dx = 0;
+        dt = 0;
+
+        stopwatch.start();
+
+        touchStartPoint = currentTouchPoint;
+        previousPoint = currentTouchPoint;
+
+    }
+    break;
+    case QEvent::TouchUpdate:
+    {
+        dx = currentTouchPoint.x() - previousPoint.x();
+        dt = stopwatch.restart();
+
+        const int edgeThreshold = 30; // maximum distance from left edge to be considered a swipe
+
+        if (touchStartPoint.x() > edgeThreshold && calendarTableView->geometry().contains(calendarTableView->mapFromGlobal(touchStartPoint))) { // need to start to the right of the left edge
+            // haptic logic
+#if defined(Q_OS_IOS)
+#endif
+
+            if (!currentCalendarSnapshot->isVisible()) {
+                // show the snapshots
+
+                // show current on top of table view
+                QDate currentMonth(calendarWidget->yearShown(), calendarWidget->monthShown(), 1);
+                if (!calendarSnapshotCache.contains(currentMonth)) {
+                    renderSnapshotsToCache(2);
+                }
+                currentCalendarSnapshot->setPixmap(calendarSnapshotCache[currentMonth]);
+                currentCalendarSnapshot->setGeometry(calendarTableView->geometry());
+                currentCalendarSnapshot->show();
+            }
+
+            int currentMonthX = qBound(-calendarTableView->width(), currentCalendarSnapshot->x() + dx, calendarTableView->width()); // range of x values
+            currentCalendarSnapshot->move(currentMonthX, currentCalendarSnapshot->y());
+
+            int direction = (currentMonthX <= 0) ? 1 : -1;
+
+            QDate currentMonth(calendarWidget->yearShown(), calendarWidget->monthShown(), 1);
+            QDate adjacentMonth = currentMonth.addMonths(direction);
+
+            if (!calendarSnapshotCache.contains(adjacentMonth)) {
+                renderSnapshotsToCache(2);
+            }
+            adjacentCalendarSnapshot->setPixmap(calendarSnapshotCache[adjacentMonth]);
+
+            int adjacentMonthX = currentMonthX + direction * calendarTableView->width();
+
+            QRect adjacentGeom = calendarTableView->geometry();
+            adjacentGeom.moveLeft(adjacentMonthX);
+
+            adjacentCalendarSnapshot->setGeometry(adjacentGeom);
+            adjacentCalendarSnapshot->show();
+        }
+
+        previousPoint = currentTouchPoint;
+    }
+    break;
+    case QEvent::TouchEnd:
+        previousPoint = currentTouchPoint;
+
+        isTouching = false;
+
+        swipeMonthHandleSwipeEnd();
+        break;
+    default:
+        break;
+    }
+}
+
+// gotta move more than 50% of full width to actuate
+void MainWindow::swipeMonthHandleSwipeEnd()
+{
+    // a click
+    if (previousPoint == touchStartPoint) {
+        return;
+    }
+
+    float velocity = (float)dx / (float)(dt + 1); // pixels per millisecond
+
+    const float thresholdVelocity = 0.3;
+
+    int totalDx = previousPoint.x() - touchStartPoint.x();
+    int thresholdDx = calendarTableView->width() / 2;
+
+    if ((qAbs(totalDx) < thresholdDx) && (qAbs(velocity) < thresholdVelocity)) {
+        // didn't meet distance or velo threshold, animate back to current
+        animateToCurrentMonth();
+    } else if (totalDx <= -thresholdDx || (velocity <= -thresholdVelocity)) {
+        // swiped left, animate to next month
+        animateToNextMonth();
+    } else {
+        // swiped right, animate to prev month
+        animateToPrevMonth();
+    }
+}
+
+
+
+void MainWindow::animateToNextMonth()
+{
+    navigateMonths(1);
+}
+
+void MainWindow::animateToPrevMonth()
+{
+    navigateMonths(-1);
+}
+
+void MainWindow::animateToCurrentMonth()
+{
+    navigateMonths(0);
+}
+
+void MainWindow::navigateMonths(int direction)
+{
+    navigateMonthsQueue.enqueue(direction);
+    if (!currentMonthSwipeAnimation() || currentMonthSwipeAnimation()->state() != QAbstractAnimation::Running) {
+        startNextMonthSwipeAnimation();
+    }
+}
+
+QPropertyAnimation *MainWindow::currentMonthSwipeAnimation()
+{
+    return dynamic_cast<QPropertyAnimation*>(currentCalendarSnapshot->graphicsEffect());
+}
+
+void MainWindow::startNextMonthSwipeAnimation()
+{
+    if (navigateMonthsQueue.isEmpty()) {
+        return;
+    }
+
+    // animation speeds up as queue increases
+    static const int defaultDuration = 300;
+    static const int minDuration = 5;
+
+    int direction = navigateMonthsQueue.head();
+    int queueLength = navigateMonthsQueue.size();
+    int adjustedDuration = qMax(minDuration, defaultDuration / (queueLength));
+
+    if (!currentCalendarSnapshot->isVisible()) {
+        // move current off the screen
+        // move adjacent onto screen
+        QDate currentMonth(calendarWidget->yearShown(), calendarWidget->monthShown(), 1);
+        QDate adjacentMonth = currentMonth.addMonths(direction);
+
+        if (!calendarSnapshotCache.contains(currentMonth)) {
+            renderSnapshotsToCache(2);
+        }
+        currentCalendarSnapshot->setPixmap(calendarSnapshotCache[currentMonth]);
+
+        if (!calendarSnapshotCache.contains(adjacentMonth)) {
+            renderSnapshotsToCache(2);
+        }
+        adjacentCalendarSnapshot->setPixmap(calendarSnapshotCache[adjacentMonth]);
+    }
+
+
+    QRect currentStartGeom;
+    QRect adjacentStartGeom;
+    if (currentCalendarSnapshot->isVisible()) {
+        // the snapshots were already up because of a swipe
+        // we're just finishing the swipe by animating it
+        currentStartGeom = currentCalendarSnapshot->geometry();
+        adjacentStartGeom = adjacentCalendarSnapshot->geometry();
+    } else {
+        currentStartGeom = calendarTableView->geometry();
+        adjacentStartGeom = calendarTableView->geometry().translated(direction * calendarTableView->width(), 0);
+    }
+
+    QRect currentEndGeom = calendarTableView->geometry().translated(-direction * calendarTableView->width(), 0);
+
+    QRect adjacentEndGeom;
+    if (direction == 0) {
+        if (adjacentCalendarSnapshot->x() >= 0) {
+            // send adjacent back to the right
+            adjacentEndGeom = calendarTableView->geometry().translated(calendarTableView->width(), 0);
+        } else {
+            // send adjacent back to the left
+            adjacentEndGeom = calendarTableView->geometry().translated(-calendarTableView->width(), 0);
+        }
+    } else {
+        // adjacent takes over current
+        adjacentEndGeom = calendarTableView->geometry();
+    }
+
+    // Create animations
+    QPropertyAnimation* animationCurrent = new QPropertyAnimation(currentCalendarSnapshot, "geometry");
+    animationCurrent->setDuration(adjustedDuration);
+    animationCurrent->setStartValue(currentStartGeom);
+    animationCurrent->setEndValue(currentEndGeom);
+    animationCurrent->setEasingCurve(QEasingCurve::InOutQuad);
+
+    QPropertyAnimation* animationAdjacent = new QPropertyAnimation(adjacentCalendarSnapshot, "geometry");
+    animationAdjacent->setDuration(adjustedDuration);
+    animationAdjacent->setStartValue(adjacentStartGeom);
+    animationAdjacent->setEndValue(adjacentEndGeom);
+    animationAdjacent->setEasingCurve(QEasingCurve::InOutQuad);
+
+    // Connect finished signal
+    connect(animationCurrent, &QPropertyAnimation::finished, this, &MainWindow::handleMonthSwipeAnimationFinished);
+
+    currentCalendarSnapshot->show();
+    adjacentCalendarSnapshot->show();
+
+    // Start animations
+    animationCurrent->start(QAbstractAnimation::DeleteWhenStopped);
+    animationAdjacent->start(QAbstractAnimation::DeleteWhenStopped);
+}
+
+void MainWindow::handleMonthSwipeAnimationFinished()
+{
+    // Swap labels and reset positions
+    int prevDirection = navigateMonthsQueue.dequeue();
+    if (prevDirection == 1) {
+        calendarWidget->showNextMonth();
+    } else if (prevDirection == -1) {
+        calendarWidget->showPreviousMonth();
+    }
+
+    currentCalendarSnapshot->hide();
+    adjacentCalendarSnapshot->hide();
+
+    if (!navigateMonthsQueue.isEmpty()) {
+        startNextMonthSwipeAnimation();
+    }
+}
+
+void MainWindow::renderSnapshotsToCache(int cacheRange)
+{
+    QDate shownMonth(calendarWidget->yearShown(), calendarWidget->monthShown(), 1);
+    for (int i = -cacheRange; i <= cacheRange; ++i) {
+        QDate month = shownMonth.addMonths(i);
+        if (!calendarSnapshotCache.contains(month)) {
+            calendarWidget->setCurrentPage(month.year(), month.month());
+            QPixmap pixmap = captureWidgetSnapshot(calendarTableView, NULL);
+            calendarSnapshotCache.insert(month, pixmap);
+        }
+    }
+    calendarWidget->setCurrentPage(shownMonth.year(), shownMonth.month());
 }
 
 bool MainWindow::getIsTouching() const
@@ -1127,14 +1427,25 @@ void MainWindow::fadeOutWidget(QWidget* widget, int duration) {
     animation->setEndValue(0); // Animate to fully transparent
     animation->setEasingCurve(QEasingCurve::InOutQuad); // Smooth transition
 
-    // Connect the animation's finished signal to hide the widget
-//    QObject::connect(animation, &QPropertyAnimation::finished, widget, &QWidget::hide);
-
     if (SvgButton *button = qobject_cast<SvgButton *>(widget)) {
         button->startColorOverride(button->activeDefaultColor());
     }
     widget->setEnabled(false);
     animation->start(QPropertyAnimation::DeleteWhenStopped); // Clean up animation when done
+}
+
+void MainWindow::fadeInWidgets(QList<QWidget *> widgets, int duration)
+{
+    foreach (auto widget, widgets) {
+        fadeInWidget(widget, duration);
+    }
+}
+
+void MainWindow::fadeOutWidgets(QList<QWidget *> widgets, int duration)
+{
+    foreach (auto widget, widgets) {
+        fadeOutWidget(widget, duration);
+    }
 }
 
 

@@ -138,8 +138,15 @@ QScrollArea {
     border: none;
 }
 
-EventListWidget, #eventListSnapshot {
+EventListWidget {
     background: @backgroundColor;
+}
+
+#widgetSnapshot {
+    background: @backgroundColor;
+    border: none;
+    padding: 0px;
+    margin: 0px;
 }
 
 
