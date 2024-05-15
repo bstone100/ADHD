@@ -60,6 +60,7 @@ private:
     SvgButton *prevButton;
     SvgButton *nextButton;
 
+    QPoint pressedPos;
     QDate pressedDate;
 
     // registers clicks on top of the table view

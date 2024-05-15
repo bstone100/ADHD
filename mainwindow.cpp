@@ -676,34 +676,18 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
         }
     }
 
-
+    // handle mobile gestures
     switch (event->type()) {
     case QEvent::TouchBegin:
     case QEvent::TouchUpdate:
     case QEvent::TouchEnd:
         if (obj->objectName() != "qt_scrollarea_viewport") {
-            QTouchEvent *touchEvent = static_cast<QTouchEvent*>(event);
-
-            // if we're looking at the calendar then a swipe from the left edge is for the side panel
-            if (topOfStackWidget == calendarWidget || SidePanel::self()->isVisibleToUser()) {
-
-                // route touch events through the side panel
-                // will do nothing if start pos was not on left edge (30 px threshold)
-                SidePanel::self()->touchEvent(touchEvent);
-                // process here as an attempt to swipe between months
-                this->swipeMonthTouchEvent(touchEvent);
-            } else {
-                // if we're looking at the event list then a swipe from the left edge is to return to the calendar
-                if (!eventListExpanding && !eventListCollapsing) {
-                    this->exitEventListTouchEvent(touchEvent);
-                }
-            }
+            touchEvent(static_cast<QTouchEvent*>(event));
         }
         break;
     default:
         break;
     }
-
 
     // toggle the animation
     if (obj == eventListSnapshot && event->type() == QEvent::MouseButtonRelease) {
@@ -828,7 +812,7 @@ void MainWindow::expandEventList(QDate date) {
     } else {
         // use geometry from the calendar widget
 
-        QRect currentCellRect = calendarWidget->getCurrentCellRectForDate(calendarWidget->selectedDate());
+        QRect currentCellRect = calendarWidget->getCurrentCellRectForDate(date);
         currentCellRect.moveTopLeft(stackedWidget->mapFromGlobal(currentCellRect.topLeft()));
 
         eventListSizeAnimation->setStartValue(currentCellRect);
@@ -973,8 +957,67 @@ QWidget *MainWindow::getTopOfStackWidget() const
 
 
 
+// determine which gesture is happening and redirect touch events until the finger is lifted
+void MainWindow::touchEvent(QTouchEvent *event)
+{
+    const QList<QTouchEvent::TouchPoint> &touchPoints = event->points();
+    if (touchPoints.isEmpty()) return;
 
+    const QTouchEvent::TouchPoint &touchPoint = touchPoints.first();
+    QPoint currentTouchPoint = touchPoint.position().toPoint();
 
+    const int edgeThreshold = 30;
+
+    bool onLeftEdge = (currentTouchPoint.x() <= edgeThreshold);
+    bool onCalendar = calendarTableView->geometry().contains(calendarTableView->mapFromGlobal(currentTouchPoint));
+
+    // set currentGesture based on initial touch
+    if (event->type() == QEvent::TouchBegin) {
+        if (SidePanel::self()->isVisibleToUser()) {
+            // side panel is already showing
+            currentGesture = SidePanel;
+        } else if (topOfStackWidget == calendarWidget && onLeftEdge) {
+            // calendar is showing and touch was on left edge
+            currentGesture = SidePanel;
+        } else if (topOfStackWidget == calendarWidget && !onLeftEdge && onCalendar) {
+            // calendar is showing and touch was not on left edge and touch was within table view area
+            currentGesture = SwipeMonth;
+        } else if (topOfStackWidget == eventListWidget && onLeftEdge) {
+            // event list widget (not snapshot) is showing and touch was on left edge
+            currentGesture = ExitEventList;
+        } else {
+            currentGesture = Undefined;
+        }
+    }
+
+    // route event
+    switch (event->type()) {
+    case QEvent::TouchBegin:
+    case QEvent::TouchUpdate:
+    case QEvent::TouchEnd:
+        switch (currentGesture) {
+        case SidePanel:
+            SidePanel::self()->touchEvent(event);
+            break;
+        case ExitEventList:
+            exitEventListTouchEvent(event);
+            break;
+        case SwipeMonth:
+            swipeMonthTouchEvent(event);
+            break;
+        case Undefined:
+            break;
+        }
+        break;
+    default:
+        break;
+    }
+
+    // after finger is lifted
+    if (event->type() == QEvent::TouchEnd) {
+        currentGesture = Undefined;
+    }
+}
 
 
 // for swiping to close the event list and return to the calendar
@@ -991,7 +1034,7 @@ void MainWindow::exitEventListTouchEvent(QTouchEvent *event) {
         prepareHapticFeedback();
 #endif
 
-        isTouching = true;
+        isDraggingToExitEventList = true;
 
         dx = 0;
         dt = 0;
@@ -1030,47 +1073,44 @@ void MainWindow::exitEventListTouchEvent(QTouchEvent *event) {
         dx = currentTouchPoint.x() - previousPoint.x();
         dt = stopwatch.restart();
 
-        const int edgeThreshold = 30; // maximum distance from left edge to be considered a swipe
-
-        if (touchStartPoint.x() <= edgeThreshold) { // attempting to close or open
 #if defined(Q_OS_IOS)
-            int halfwayPos = this->width() / 2;
-            int currentPos = currentTouchPoint.x();
-            int previousPos = previousPoint.x();
+        int halfwayPos = this->width() / 2;
+        int currentPos = currentTouchPoint.x();
+        int previousPos = previousPoint.x();
 
-            if (currentPos >= halfwayPos && previousPos < halfwayPos) {
-                generateHapticFeedback();
-//                qDebug() << "haptic from Left: " << currentPos << halfwayPos;
-            } else if (currentPos <= halfwayPos && previousPos > halfwayPos) {
-                generateHapticFeedback();
-//                qDebug() << "haptic from Right: " << currentPos << halfwayPos;
-            }
+        if (currentPos >= halfwayPos && previousPos < halfwayPos) {
+            generateHapticFeedback();
+            //                qDebug() << "haptic from Left: " << currentPos << halfwayPos;
+        } else if (currentPos <= halfwayPos && previousPos > halfwayPos) {
+            generateHapticFeedback();
+            //                qDebug() << "haptic from Right: " << currentPos << halfwayPos;
+        }
 #endif
 
 
-            if (topOfStackWidget == eventListWidget) {
-                captureWidgetSnapshot(eventListWidget, eventListSnapshot);
-                eventListWidget->hide();
-                eventListSnapshot->setGeometry(eventListWidget->geometry());
-                eventListSnapshot->show();
-                eventListSnapshot->raise();
+        if (topOfStackWidget == eventListWidget) {
+            captureWidgetSnapshot(eventListWidget, eventListSnapshot);
+            eventListWidget->hide();
+            eventListSnapshot->setGeometry(eventListWidget->geometry());
+            eventListSnapshot->show();
+            eventListSnapshot->raise();
 
-                topOfStackWidget = eventListSnapshot;
-            }
-
-            // go to t in animation
-            float curPos = currentTouchPoint.x() - touchStartPoint.x();
-            float availWidth = calendarWidget->getTableViewInitialGeometry().width() - touchStartPoint.x();
-            progress = qBound(0.0, curPos / availWidth, 1.0);
-
-            eventListInterpolator->setCurrentTime(progress * eventListInterpolator->duration());
-            QRect eventListGeom = eventListInterpolator->currentValue().toRect();
-            eventListSnapshot->setGeometry(eventListGeom);
-
-            calendarInterpolator->setCurrentTime(progress * calendarInterpolator->duration());
-            QRect calendarGeom = calendarInterpolator->currentValue().toRect();
-            calendarTableView->setGeometry(calendarGeom);
+            topOfStackWidget = eventListSnapshot;
         }
+
+        // go to t in animation
+        float curPos = currentTouchPoint.x() - touchStartPoint.x();
+        float availWidth = calendarWidget->getTableViewInitialGeometry().width() - touchStartPoint.x();
+        progress = qBound(0.0, curPos / availWidth, 1.0);
+
+        eventListInterpolator->setCurrentTime(progress * eventListInterpolator->duration());
+        QRect eventListGeom = eventListInterpolator->currentValue().toRect();
+        eventListSnapshot->setGeometry(eventListGeom);
+
+        calendarInterpolator->setCurrentTime(progress * calendarInterpolator->duration());
+        QRect calendarGeom = calendarInterpolator->currentValue().toRect();
+        calendarTableView->setGeometry(calendarGeom);
+
 
         previousPoint = currentTouchPoint;
     }
@@ -1078,7 +1118,7 @@ void MainWindow::exitEventListTouchEvent(QTouchEvent *event) {
     case QEvent::TouchEnd:
         previousPoint = currentTouchPoint;
 
-        isTouching = false;
+        isDraggingToExitEventList = false;
 
         exitEventListHandleSwipeEnd();
         break;
@@ -1134,7 +1174,7 @@ void MainWindow::swipeMonthTouchEvent(QTouchEvent *event)
         prepareHapticFeedback();
 #endif
 
-        isTouching = true;
+        isDraggingToSwipeMonth = true;
 
         dx = 0;
         dt = 0;
@@ -1151,47 +1191,44 @@ void MainWindow::swipeMonthTouchEvent(QTouchEvent *event)
         dx = currentTouchPoint.x() - previousPoint.x();
         dt = stopwatch.restart();
 
-        const int edgeThreshold = 30; // maximum distance from left edge to be considered a swipe
-
-        if (touchStartPoint.x() > edgeThreshold && calendarTableView->geometry().contains(calendarTableView->mapFromGlobal(touchStartPoint))) { // need to start to the right of the left edge
-            // haptic logic
+// haptic logic
 #if defined(Q_OS_IOS)
 #endif
 
-            if (!currentCalendarSnapshot->isVisible()) {
-                // show the snapshots
+        if (!currentCalendarSnapshot->isVisible()) {
+            // show the snapshots
 
-                // show current on top of table view
-                QDate currentMonth(calendarWidget->yearShown(), calendarWidget->monthShown(), 1);
-                if (!calendarSnapshotCache.contains(currentMonth)) {
-                    renderSnapshotsToCache(2);
-                }
-                currentCalendarSnapshot->setPixmap(calendarSnapshotCache[currentMonth]);
-                currentCalendarSnapshot->setGeometry(calendarTableView->geometry());
-                currentCalendarSnapshot->show();
-            }
-
-            int currentMonthX = qBound(-calendarTableView->width(), currentCalendarSnapshot->x() + dx, calendarTableView->width()); // range of x values
-            currentCalendarSnapshot->move(currentMonthX, currentCalendarSnapshot->y());
-
-            int direction = (currentMonthX <= 0) ? 1 : -1;
-
+            // show current on top of table view
             QDate currentMonth(calendarWidget->yearShown(), calendarWidget->monthShown(), 1);
-            QDate adjacentMonth = currentMonth.addMonths(direction);
-
-            if (!calendarSnapshotCache.contains(adjacentMonth)) {
+            if (!calendarSnapshotCache.contains(currentMonth)) {
                 renderSnapshotsToCache(2);
             }
-            adjacentCalendarSnapshot->setPixmap(calendarSnapshotCache[adjacentMonth]);
-
-            int adjacentMonthX = currentMonthX + direction * calendarTableView->width();
-
-            QRect adjacentGeom = calendarTableView->geometry();
-            adjacentGeom.moveLeft(adjacentMonthX);
-
-            adjacentCalendarSnapshot->setGeometry(adjacentGeom);
-            adjacentCalendarSnapshot->show();
+            currentCalendarSnapshot->setPixmap(calendarSnapshotCache[currentMonth]);
+            currentCalendarSnapshot->setGeometry(calendarTableView->geometry());
+            currentCalendarSnapshot->show();
         }
+
+        int currentMonthX = qBound(-calendarTableView->width(), currentCalendarSnapshot->x() + dx, calendarTableView->width()); // range of x values
+        currentCalendarSnapshot->move(currentMonthX, currentCalendarSnapshot->y());
+
+        int direction = (currentMonthX <= 0) ? 1 : -1;
+
+        QDate currentMonth(calendarWidget->yearShown(), calendarWidget->monthShown(), 1);
+        QDate adjacentMonth = currentMonth.addMonths(direction);
+
+        if (!calendarSnapshotCache.contains(adjacentMonth)) {
+            renderSnapshotsToCache(2);
+        }
+        adjacentCalendarSnapshot->setPixmap(calendarSnapshotCache[adjacentMonth]);
+
+        int adjacentMonthX = currentMonthX + direction * calendarTableView->width();
+
+        QRect adjacentGeom = calendarTableView->geometry();
+        adjacentGeom.moveLeft(adjacentMonthX);
+
+        adjacentCalendarSnapshot->setGeometry(adjacentGeom);
+        adjacentCalendarSnapshot->show();
+
 
         previousPoint = currentTouchPoint;
     }
@@ -1199,7 +1236,7 @@ void MainWindow::swipeMonthTouchEvent(QTouchEvent *event)
     case QEvent::TouchEnd:
         previousPoint = currentTouchPoint;
 
-        isTouching = false;
+        isDraggingToSwipeMonth = false;
 
         swipeMonthHandleSwipeEnd();
         break;
@@ -1233,6 +1270,16 @@ void MainWindow::swipeMonthHandleSwipeEnd()
         // swiped right, animate to prev month
         animateToPrevMonth();
     }
+}
+
+bool MainWindow::getIsDraggingToSwipeMonth() const
+{
+    return isDraggingToSwipeMonth;
+}
+
+bool MainWindow::getIsDraggingToExitEventList() const
+{
+    return isDraggingToExitEventList;
 }
 
 
@@ -1273,7 +1320,7 @@ void MainWindow::startNextMonthSwipeAnimation()
 
     // animation speeds up as queue increases
     static const int defaultDuration = 300;
-    static const int minDuration = 5;
+    static const int minDuration = 50;
 
     int direction = navigateMonthsQueue.head();
     int queueLength = navigateMonthsQueue.size();
@@ -1379,11 +1426,6 @@ void MainWindow::renderSnapshotsToCache(int cacheRange)
         }
     }
     calendarWidget->setCurrentPage(shownMonth.year(), shownMonth.month());
-}
-
-bool MainWindow::getIsTouching() const
-{
-    return isTouching;
 }
 
 

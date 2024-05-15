@@ -114,7 +114,7 @@ void CalendarWidget::paintCell(QPainter *painter, const QRect &rect, QDate date)
     bool paintBackground = false;
     if (isToday) {
         paintBackground = true;
-        if (isSelected && (MainWindow::self()->getIsTouching() || MainWindow::self()->isEventListExpanding() || MainWindow::self()->isEventListCollapsing())) {
+        if (isSelected && (MainWindow::self()->getIsDraggingToExitEventList() || MainWindow::self()->isEventListExpanding() || MainWindow::self()->isEventListCollapsing())) {
             paintBackground = false;
         }
     }
@@ -155,8 +155,8 @@ bool CalendarWidget::eventFilter(QObject *watched, QEvent *event)
     case QEvent::MouseButtonPress: {
         if (watched == cellViewWidget) {
             QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
-            QPoint pos = mapFromGlobal(mouseEvent->globalPosition().toPoint());
-            pressedDate = dateAt(pos);
+            pressedPos = mapFromGlobal(mouseEvent->globalPosition().toPoint());
+            pressedDate = dateAt(pressedPos);
         }
         break;
     }
@@ -165,11 +165,10 @@ bool CalendarWidget::eventFilter(QObject *watched, QEvent *event)
             QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
             QPoint pos = mapFromGlobal(mouseEvent->globalPosition().toPoint());
             QDate date = dateAt(pos);
-            if (!isDateInCurrentMonth(date) || date != pressedDate || SidePanel::self()->isVisibleToUser()) {
+            if (!isDateInCurrentMonth(date) || date != pressedDate || pressedPos != pos || SidePanel::self()->isVisibleToUser()) {
                 event->ignore();
                 return true;
             }
-            qDebug() << "valid click";
             MainWindow::self()->expandEventList(date);
         }
         break;

@@ -78,12 +78,13 @@ public:
 
     QWidget *getTopOfStackWidget() const;
 
-    bool getIsTouching() const;
-
     void fadeInWidget(QWidget *widget, int duration);
     void fadeOutWidget(QWidget *widget, int duration);
     void fadeInWidgets(QList<QWidget *> widgets, int duration);
     void fadeOutWidgets(QList<QWidget *> widgets, int duration);
+
+    bool getIsDraggingToExitEventList() const;
+    bool getIsDraggingToSwipeMonth() const;
 
 protected:
     void closeEvent(QCloseEvent *event) override;
@@ -146,18 +147,27 @@ private:
     void captureNextMonthSnapshot();
     void capturePrevMonthSnapshot();
 
+    void touchEvent(QTouchEvent *event);
+
     void exitEventListTouchEvent(QTouchEvent *event);
     void exitEventListHandleSwipeEnd();
 
     void swipeMonthTouchEvent(QTouchEvent *event);
     void swipeMonthHandleSwipeEnd();
 
-    bool isAnimatingToNextMonth = false;
-    bool isAnimatingToPrevMonth = false;
 
-    bool isSidePanelTouch = false;
+    bool isDraggingToExitEventList = false;
+    bool isDraggingToSwipeMonth = false;
 
-    bool isTouching = false;
+    enum Gesture {
+        SidePanel = 0,
+        ExitEventList,
+        SwipeMonth,
+        Undefined
+    };
+
+    Gesture currentGesture = Undefined;
+
     QPoint touchStartPoint;
     QPoint previousPoint;
 
