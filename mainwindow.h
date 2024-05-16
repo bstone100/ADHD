@@ -82,6 +82,8 @@ public:
     void fadeOutWidget(QWidget *widget, int duration);
     void fadeInWidgets(QList<QWidget *> widgets, int duration);
     void fadeOutWidgets(QList<QWidget *> widgets, int duration);
+    void setWidgetOpacity(QWidget *widget, double opacity);
+    double getWidgetOpacity(QWidget *widget);
 
     bool getIsDraggingToExitEventList() const;
     bool getIsDraggingToSwipeMonth() const;
@@ -187,8 +189,7 @@ private:
     QQueue<int> navigateMonthsQueue; // +1 for next month, -1 for previous month, 0 for current month
 
     void navigateMonths(int direction);
-    QPropertyAnimation *currentMonthSwipeAnimation();
-    void startNextMonthSwipeAnimation();
+    void startMonthSwipeAnimation();
     void handleMonthSwipeAnimationFinished();
     void renderSnapshotsToCache(int cacheRange);
 
@@ -197,6 +198,8 @@ private:
 
     QMap<QDate, QPixmap> calendarSnapshotCache;
 
+    QPropertyAnimation* animationCurrent = NULL;
+    QPropertyAnimation* animationAdjacent = NULL;
 };
 
 #endif // MAINWINDOW_H

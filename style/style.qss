@@ -107,6 +107,10 @@ QToolButton:pressed, QToolButton:disabled {
     color: @foregroundColor;
 }
 
+QCalendarWidget {
+    background-color: @backgroundColor;
+}
+
 QCalendarWidget QAbstractItemView
 {
     background-color: @backgroundColor;
