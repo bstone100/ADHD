@@ -28,9 +28,6 @@ CalendarWidget::CalendarWidget(QWidget *parent) : QCalendarWidget(parent) {
     cellViewWidget = findChild<QWidget *>("qt_scrollarea_viewport");
     cellViewWidget->installEventFilter(this);
 
-    eventListVisible = false;
-
-
 //    auto childWidgets = findChildren<QWidget *>();
 //    qDebug() << childWidgets;
 //    qt_calendar_prevmonth qt_calendar_nextmonth qt_calendar_monthbutton qt_calendar_yearbutton
@@ -55,7 +52,9 @@ CalendarWidget::CalendarWidget(QWidget *parent) : QCalendarWidget(parent) {
     prevButton->setFixedSize(90, 50);
     prevButton->setUsingAppColors(true);
 
-    connect(prevButton, &QPushButton::clicked, this, &QCalendarWidget::showPreviousMonth);
+//    connect(prevButton, &QPushButton::clicked, this, &QCalendarWidget::showPreviousMonth);
+    connect(prevButton, &QPushButton::clicked, MainWindow::self(), &MainWindow::animateToPrevMonth);
+
 
     QAbstractButton *nextMonth = findChild<QAbstractButton *>("qt_calendar_nextmonth");
 
@@ -66,7 +65,8 @@ CalendarWidget::CalendarWidget(QWidget *parent) : QCalendarWidget(parent) {
     nextButton->setUsingAppColors(true);
     nextButton->installEventFilter(this);
 
-    connect(nextButton, &QPushButton::clicked, this, &QCalendarWidget::showNextMonth);
+//    connect(nextButton, &QPushButton::clicked, this, &QCalendarWidget::showNextMonth);
+    connect(nextButton, &QPushButton::clicked, MainWindow::self(), &MainWindow::animateToNextMonth);
 
     topLayout->replaceWidget(prevMonth, prevButton);
     topLayout->replaceWidget(nextMonth, nextButton);
@@ -92,12 +92,6 @@ CalendarWidget::CalendarWidget(QWidget *parent) : QCalendarWidget(parent) {
 }
 
 void CalendarWidget::paintCell(QPainter *painter, const QRect &rect, QDate date) const {
-//    QCalendarWidget::paintCell(painter, rect, date);
-//    if (MainWindow::self()->animating) {
-//        qDebug() << "caught paint";
-//        return;
-//    }
-
     if (!isDateInCurrentMonth(date)) return;
 
     painter->setRenderHint(QPainter::Antialiasing);
@@ -120,7 +114,7 @@ void CalendarWidget::paintCell(QPainter *painter, const QRect &rect, QDate date)
     bool paintBackground = false;
     if (isToday) {
         paintBackground = true;
-        if (isSelected && (MainWindow::self()->getIsTouching() || MainWindow::self()->isEventListExpanding() || MainWindow::self()->isEventListCollapsing())) {
+        if (isSelected && (MainWindow::self()->getIsDraggingToExitEventList() || MainWindow::self()->isEventListExpanding() || MainWindow::self()->isEventListCollapsing())) {
             paintBackground = false;
         }
     }
@@ -161,8 +155,8 @@ bool CalendarWidget::eventFilter(QObject *watched, QEvent *event)
     case QEvent::MouseButtonPress: {
         if (watched == cellViewWidget) {
             QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
-            QPoint pos = mapFromGlobal(mouseEvent->globalPosition().toPoint());
-            pressedDate = dateAt(pos);
+            pressedPos = mapFromGlobal(mouseEvent->globalPosition().toPoint());
+            pressedDate = dateAt(pressedPos);
         }
         break;
     }
@@ -171,25 +165,16 @@ bool CalendarWidget::eventFilter(QObject *watched, QEvent *event)
             QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
             QPoint pos = mapFromGlobal(mouseEvent->globalPosition().toPoint());
             QDate date = dateAt(pos);
-            if (!isDateInCurrentMonth(date) || date != pressedDate || SidePanel::self()->isVisibleToUser()) {
+            if (!isDateInCurrentMonth(date) || date != pressedDate || pressedPos != pos || SidePanel::self()->isVisibleToUser()) {
                 event->ignore();
                 return true;
             }
+            MainWindow::self()->expandEventList(date);
         }
         break;
     }
     default:
         break;
-    }
-
-
-    if (event->type() == QEvent::Paint) {
-        if (watched == monthDropDown || watched == yearEditBox || watched == nextButton) {
-            if (eventListVisible) {
-                event->ignore();
-                return true;
-            }
-        }
     }
 
     return QCalendarWidget::eventFilter(watched, event);
@@ -209,14 +194,29 @@ bool CalendarWidget::event(QEvent *event)
     return QCalendarWidget::event(event);
 }
 
+QDate CalendarWidget::getPressedDate() const
+{
+    return pressedDate;
+}
+
+QToolButton *CalendarWidget::getMonthDropDown() const
+{
+    return monthDropDown;
+}
+
+QToolButton *CalendarWidget::getYearEditBox() const
+{
+    return yearEditBox;
+}
+
+SvgButton *CalendarWidget::getNextButton() const
+{
+    return nextButton;
+}
+
 SvgButton *CalendarWidget::getPrevButton() const
 {
     return prevButton;
-}
-
-QWidget *CalendarWidget::getCellViewWidget() const
-{
-    return cellViewWidget;
 }
 
 QRect CalendarWidget::getTableViewInitialGeometry() const
@@ -301,26 +301,14 @@ QPoint CalendarWidget::getInitialLocalPointFromDate(QDate date)
 void CalendarWidget::makeBackButtonShowPrevMonth(bool showPreviousMonth)
 {
     if (showPreviousMonth) {
-        connect(prevButton, &QPushButton::clicked, this, &QCalendarWidget::showPreviousMonth);
+//        connect(prevButton, &QPushButton::clicked, this, &QCalendarWidget::showPreviousMonth);
+        connect(prevButton, &QPushButton::clicked, MainWindow::self(), &MainWindow::animateToPrevMonth);
         disconnect(prevButton, &QPushButton::clicked, MainWindow::self(), &MainWindow::collapseEventList);
     } else {
-        disconnect(prevButton, &QPushButton::clicked, this, &QCalendarWidget::showPreviousMonth);
+//        disconnect(prevButton, &QPushButton::clicked, this, &QCalendarWidget::showPreviousMonth);
+        disconnect(prevButton, &QPushButton::clicked, MainWindow::self(), &MainWindow::animateToPrevMonth);
         connect(prevButton, &QPushButton::clicked, MainWindow::self(), &MainWindow::collapseEventList);
     }
-}
-
-void CalendarWidget::fadeOutNavigationButtons(int duration)
-{
-    MainWindow::self()->fadeOutWidget(monthDropDown, duration);
-    MainWindow::self()->fadeOutWidget(yearEditBox, duration);
-    MainWindow::self()->fadeOutWidget(nextButton, duration);
-}
-
-void CalendarWidget::fadeInNavigationButtons(int duration)
-{
-    MainWindow::self()->fadeInWidget(monthDropDown, duration);
-    MainWindow::self()->fadeInWidget(yearEditBox, duration);
-    MainWindow::self()->fadeInWidget(nextButton, duration);
 }
 
 QTableView *CalendarWidget::getTableView() const

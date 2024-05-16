@@ -107,6 +107,10 @@ QToolButton:pressed, QToolButton:disabled {
     color: @foregroundColor;
 }
 
+QCalendarWidget {
+    background-color: @backgroundColor;
+}
+
 QCalendarWidget QAbstractItemView
 {
     background-color: @backgroundColor;
@@ -138,8 +142,15 @@ QScrollArea {
     border: none;
 }
 
-EventListWidget, #eventListSnapshot {
+EventListWidget {
     background: @backgroundColor;
+}
+
+#widgetSnapshot {
+    background: @backgroundColor;
+    border: none;
+    padding: 0px;
+    margin: 0px;
 }
 
 

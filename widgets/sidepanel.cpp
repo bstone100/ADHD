@@ -135,29 +135,25 @@ void SidePanel::touchEvent(QTouchEvent *event) {
 
         int newX = qBound(-calculateWidth(), x() + dx, 0); // range of x values
 
-        const int edgeThreshold = 30; // maximum distance from left edge to be considered a swipe
-
-        if (isPanelOpen || touchStartPoint.x() <= edgeThreshold) { // attempting to close or open
 #if defined(Q_OS_IOS)
-            int halfwayPos = calculateWidth() / 2;
-            int previousPos = x() + width();
-            int currentPos = newX + width();
+        int halfwayPos = calculateWidth() / 2;
+        int previousPos = x() + width();
+        int currentPos = newX + width();
 
-            if (currentPos >= halfwayPos && previousPos < halfwayPos) {
-                generateHapticFeedback();
-//                qDebug() << "haptic from Left: " << currentPos << halfwayPos;
-            } else if (currentPos <= halfwayPos && previousPos > halfwayPos) {
-                generateHapticFeedback();
-//                qDebug() << "haptic from Right: " << currentPos << halfwayPos;
-            }
-#endif
-
-            move(newX, y());
-
-#if defined(Q_OS_IOS)
-            forceChildWidgetGeometry();
-#endif
+        if (currentPos >= halfwayPos && previousPos < halfwayPos) {
+            generateHapticFeedback();
+            //                qDebug() << "haptic from Left: " << currentPos << halfwayPos;
+        } else if (currentPos <= halfwayPos && previousPos > halfwayPos) {
+            generateHapticFeedback();
+            //                qDebug() << "haptic from Right: " << currentPos << halfwayPos;
         }
+#endif
+
+        move(newX, y());
+
+#if defined(Q_OS_IOS)
+        forceChildWidgetGeometry();
+#endif
 
         previousPoint = currentTouchPoint;
     }
