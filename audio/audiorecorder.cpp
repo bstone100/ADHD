@@ -134,6 +134,7 @@ AudioLevel *AudioRecorder::getLevelWidget()
 {
     if (!levelWidget) {
         levelWidget = new AudioLevel(MainWindow::self());
+        levelWidget->setFixedSize(30,30);
         levelWidget->setAudioRecorder(this);
     }
     return levelWidget;

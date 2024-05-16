@@ -28,6 +28,8 @@ public:
     void start();
     void stop();
 
+    void resizeImage();
+
 protected:
     void paintEvent(QPaintEvent *event) override;
 
@@ -35,6 +37,7 @@ private:
     void paintMic();
     void paintMascot();
     void paintConcaveMascot();
+    void paintPandaImage();
 
     qreal m_level = 0.0;
 
@@ -46,6 +49,9 @@ private:
     void updateOpacity();
 
     AudioRecorder *audioRecorder;
+
+    QPixmap pandaImage;
+    QPixmap currentPixmap;
 };
 
 #endif // QAUDIOLEVEL_H

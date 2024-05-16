@@ -138,13 +138,8 @@ MainWindow::MainWindow(QWidget *parent)
     assistantTextEdit->setMaxHeight(200);
 
     assistantLevelWidget = new AudioLevel(this);
-
-
-    SvgButton *pandaButton = new SvgButton(assistantLevelWidget);
-    assistantLevelWidget->setFixedSize(60,60);
-    pandaButton->setSvgPath(":/images/panda.svg");
-    pandaButton->setIconSize(QSize(60,60));
-    pandaButton->setUsingAppColors(true);
+    assistantLevelWidget->setFixedSize(80,80);
+    assistantLevelWidget->resizeImage();
 
 
     // Create the text input field

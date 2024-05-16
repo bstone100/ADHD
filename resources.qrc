@@ -9,5 +9,6 @@
         <file>images/panda.svg</file>
         <file>AI/exampleConversation.json</file>
         <file>style/style.qss</file>
+        <file>images/pandaTask.png</file>
     </qresource>
 </RCC>

@@ -9,7 +9,8 @@
 
 AudioLevel::AudioLevel(QWidget *parent) : QWidget(parent)
 {
-    setFixedSize(30,30);
+
+    pandaImage = QPixmap(":/images/pandaTask.png");
 
     audioRecorder = NULL;
 
@@ -23,6 +24,11 @@ void AudioLevel::setLevel(qreal level)
 {
     if (m_level != level) {
         m_level = level;
+
+        if (!audioRecorder) {
+            resizeImage();
+        }
+
         update();
     }
 }
@@ -31,7 +37,7 @@ void AudioLevel::paintEvent(QPaintEvent *event)
 {
     Q_UNUSED(event);
 
-    audioRecorder ? paintMic() : paintMascot();
+    audioRecorder ? paintMic() : paintPandaImage();
 }
 
 void AudioLevel::paintMic()
@@ -194,6 +200,17 @@ void AudioLevel::paintConcaveMascot()
     painter.drawPath(mouthPath);
 }
 
+void AudioLevel::paintPandaImage()
+{
+    QPainter painter(this);
+    // Adjust the drawing position based on the device pixel ratio
+    qreal ratio = devicePixelRatioF();
+    painter.drawPixmap(QRect((width() - currentPixmap.width() / ratio) / 2,
+                             (height() - currentPixmap.height() / ratio) / 2,
+                             currentPixmap.width() / ratio,
+                             currentPixmap.height() / ratio), currentPixmap);
+}
+
 void AudioLevel::updateOpacity()
 {
     static const qreal minOpacity = 0.0;
@@ -250,4 +267,18 @@ void AudioLevel::setFillColor(const QColor &newFillColor)
 {
     fillColor = newFillColor;
 }
+
+void AudioLevel::resizeImage() {
+    int minSize = width() - 20;
+    int maxSize = width();
+    int size = static_cast<int>(minSize + (maxSize - minSize) * m_level);
+
+    qreal ratio = devicePixelRatioF();
+    // Calculate the size considering the device pixel ratio
+    currentPixmap = pandaImage.scaled(size * ratio, size * ratio, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    currentPixmap.setDevicePixelRatio(ratio);  // Set the device pixel ratio for pixmap
+}
+
+
+
 
