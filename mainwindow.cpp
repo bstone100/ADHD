@@ -113,7 +113,7 @@ MainWindow::MainWindow(QWidget *parent)
     });
 
 
-    modelComboBox = new ResizingComboBox(SidePanel::self());
+    modelComboBox = new ResizingComboBox(/*SidePanel::self()*/);
     QStringList models = {tr("Smart"), tr("Smarter")};
     modelComboBox->addItems(models);
     modelComboBox->setCurrentIndex(0);
@@ -309,7 +309,7 @@ MainWindow::MainWindow(QWidget *parent)
     modelLayout->addWidget(modelComboBox); // Assuming modelComboBox is already created
 
     // Add the horizontal layouts to the main vertical layout
-    assistantVLayout->addLayout(modelLayout);
+//    assistantVLayout->addLayout(modelLayout);
     assistantVLayout->addLayout(voiceLayout);
 
     // Set the main layout for the group box
@@ -403,12 +403,14 @@ void MainWindow::sendChat()
     userMessage->addTimestamp();
     textInputField->clear();
 
-    int index = modelComboBox->currentIndex();
-    if (index == 0) {
-        chatRequest->setModel("gpt-3.5-turbo");
-    } else if (index == 1) {
-        chatRequest->setModel("gpt-4o");
-    }
+//    int index = modelComboBox->currentIndex();
+//    if (index == 0) {
+//        chatRequest->setModel("gpt-3.5-turbo");
+//    } else if (index == 1) {
+//        chatRequest->setModel("gpt-4o");
+//    }
+
+    chatRequest->setModel("gpt-4o");
 
     chatRequest->addMessage(userMessage);
     chatRequest->execute();
