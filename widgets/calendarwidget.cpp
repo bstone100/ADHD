@@ -186,6 +186,7 @@ bool CalendarWidget::event(QEvent *event)
 //    case QEvent::Show:
     case QEvent::Resize:
         cacheInitialCellGeometry();
+        MainWindow::self()->updateEventViews();
         break;
     default:
         break;

@@ -98,6 +98,7 @@ private:
     static MainWindow *singleton;
 
     bool settingsLoaded = false;
+    bool onboarded = false;
 
     void updateApiKeyButtonLabel();
 
@@ -191,12 +192,10 @@ private:
     void navigateMonths(int direction);
     void startMonthSwipeAnimation();
     void handleMonthSwipeAnimationFinished();
-    void renderSnapshotsToCache(int cacheRange);
+    QPixmap renderSnapshotOfMonth(QDate month);
 
     QLabel *currentCalendarSnapshot;
     QLabel *adjacentCalendarSnapshot;
-
-    QMap<QDate, QPixmap> calendarSnapshotCache;
 
     QPropertyAnimation* animationCurrent = NULL;
     QPropertyAnimation* animationAdjacent = NULL;

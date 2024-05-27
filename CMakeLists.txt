@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.5)
 
 set(MY_APP_PROJECT_NAME "PandaTask")
 set(PROJECT_VERSION 1.1)
+add_definitions(-DPROJECT_VERSION="${PROJECT_VERSION}")
 set(MY_APP_REVERSE_DNS_IDENTIFIER "com.bstone.PandaTask")
 
 project(${MY_APP_PROJECT_NAME} VERSION ${PROJECT_VERSION} LANGUAGES CXX)

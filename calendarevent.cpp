@@ -26,7 +26,13 @@ CalendarEvent CalendarEvent::fromJson(const QJsonObject &obj) {
     e.startDateTime = parseDateTime(obj["startDateTime"].toString());
     e.endDateTime = parseDateTime(obj["endDateTime"].toString());
 
-    if (!e.endDateTime.isValid() || (e.endDateTime < e.startDateTime)) {
+    if (!e.endDateTime.isValid() && e.startDateTime.isValid()) {
+        e.endDateTime = e.startDateTime;
+    }
+    if (!e.startDateTime.isValid() && e.endDateTime.isValid()) {
+        e.startDateTime = e.endDateTime;
+    }
+    if (e.endDateTime < e.startDateTime) {
         e.endDateTime = e.startDateTime;
     }
 
@@ -65,7 +71,13 @@ void CalendarEvent::updateFromJson(const QJsonObject &obj)
         }
     }
 
-    if (!endDateTime.isValid() || (endDateTime < startDateTime)) {
+    if (!endDateTime.isValid() && startDateTime.isValid()) {
+        endDateTime = startDateTime;
+    }
+    if (!startDateTime.isValid() && endDateTime.isValid()) {
+        startDateTime = endDateTime;
+    }
+    if (endDateTime < startDateTime) {
         endDateTime = startDateTime;
     }
 

@@ -155,7 +155,7 @@ void API::generateTools()
         {"function", getContextForRangeFunctionObject}
     };
 
-    toolList.append(APITool{&API::getContextForRange, getContextForRangeDescription});
+//    toolList.append(APITool{&API::getContextForRange, getContextForRangeDescription});
 }
 
 QJsonArray API::getToolsJsonArray()
