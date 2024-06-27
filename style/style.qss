@@ -29,18 +29,17 @@ QAbstractButton:pressed {
 }
 
 QGroupBox {
-    background-color: transparent;
-    border: 2px solid @foregroundColor;
+    background-color: @backgroundColor;
+    border: none;
     border-radius: 5px;
-    margin-top: 1.5ex; /* leave space at the top for the title */
+    margin-top: 2.5ex; /* leave space at the top for the title */
     font-size: 17px;
 }
 
 QGroupBox::title {
     font: helvetica;
     subcontrol-origin: margin;
-    subcontrol-position: top left; /* position at the top left */
-    left: 10;
+    subcontrol-position: top center;
     background-color: @sidePanelColor;
 }
 

@@ -199,6 +199,7 @@ private:
 
     QPropertyAnimation* animationCurrent = NULL;
     QPropertyAnimation* animationAdjacent = NULL;
+    int calculateMyAge() const;
 };
 
 #endif // MAINWINDOW_H

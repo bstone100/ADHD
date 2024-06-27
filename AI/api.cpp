@@ -8,7 +8,7 @@
 #include "../calendarevent.h"
 #include "../mainwindow.h"
 #include "../calendareventmanager.h"
-#include "qapplication.h""
+#include "qapplication.h"
 
 QList<APITool> API::toolList = {};
 
